@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import { authService } from '../services/AuthService';
 import { AppError } from './errorHandler';
 
 /**
@@ -12,9 +13,6 @@ export interface AuthenticatedRequest extends Request {
 /**
  * Authentication Middleware
  * Validates JWT token and extracts user information
- * 
- * TODO: Implement JWT verification when auth is ready
- * For now, this is a placeholder that will be enhanced
  */
 export function authenticate(
   req: AuthenticatedRequest,
@@ -35,16 +33,12 @@ export function authenticate(
       throw new AppError('Invalid authentication token format', 401);
     }
 
-    // TODO: Implement JWT verification
-    // const decoded = jwt.verify(token, process.env.JWT_SECRET!);
-    // req.userId = decoded.userId;
-    // req.userEmail = decoded.email;
+    // Verify JWT token
+    const decoded = authService.verifyToken(token);
 
-    // Temporary: For development only, remove in production
-    if (process.env.NODE_ENV === 'development') {
-      req.userId = 'dev-user-id';
-      req.userEmail = 'dev@vaultdocs.com';
-    }
+    // Attach user info to request
+    req.userId = decoded.userId;
+    req.userEmail = decoded.email;
 
     next();
   } catch (error) {
