@@ -5,7 +5,7 @@ import { errorHandler } from './middlewares/errorHandler';
 import { notFoundHandler } from './middlewares/notFoundHandler';
 
 // Import routes
-// import { documentRoutes } from './routes/document.routes';
+import { documentRoutes } from './routes/document.routes';
 // import { authRoutes } from './routes/auth.routes';
 
 const app: Application = express();
@@ -48,10 +48,10 @@ app.get('/health', (req: Request, res: Response) => {
 });
 
 // ===========================================
-// API Routes (uncomment when ready)
+// API Routes
 // ===========================================
 // app.use('/api/v1/auth', authRoutes);
-// app.use('/api/v1/documents', documentRoutes);
+app.use('/api/v1/documents', documentRoutes);
 
 // ===========================================
 // 404 Handler

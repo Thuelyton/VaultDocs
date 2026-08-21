@@ -131,6 +131,24 @@ export class DocumentController {
       data: stats,
     });
   }
+
+  /**
+   * GET /api/v1/documents/expiring
+   * Get documents expiring soon
+   * @query days - Number of days ahead (default: 30)
+   */
+  async getExpiring(req: AuthenticatedRequest, res: Response): Promise<void> {
+    const { days } = req.query;
+    const daysAhead = days ? parseInt(days as string, 10) : 30;
+
+    const documents = await documentService.getExpiringDocuments(daysAhead);
+
+    res.status(200).json({
+      status: 'success',
+      count: documents.length,
+      data: documents,
+    });
+  }
 }
 
 // Export singleton instance

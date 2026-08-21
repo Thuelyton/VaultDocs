@@ -30,6 +30,14 @@ router.get('/', documentController.list.bind(documentController));
 router.get('/stats', documentController.getStats.bind(documentController));
 
 /**
+ * @route   GET /api/v1/documents/expiring
+ * @desc    Get documents expiring soon
+ * @access  Private
+ * @query   days - Number of days ahead (default: 30)
+ */
+router.get('/expiring', documentController.getExpiring.bind(documentController));
+
+/**
  * @route   GET /api/v1/documents/:id
  * @desc    Get a single document by ID
  * @access  Private
