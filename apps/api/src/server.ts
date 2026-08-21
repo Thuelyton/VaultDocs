@@ -1,9 +1,12 @@
 import dotenv from 'dotenv';
+import path from 'path';
+
+// Load environment variables FIRST before any other imports
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
+
+// Now import the rest of the application
 import app from './app';
 import { connectDatabase } from './config/database';
-
-// Load environment variables
-dotenv.config();
 
 const PORT = process.env.PORT || 3000;
 

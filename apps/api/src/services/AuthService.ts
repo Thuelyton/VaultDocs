@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken';
-import { UserModel, IUser } from '../models/User';
+import { UserModel, IUserDocument, UserJSON } from '../models/User';
 import { AppError } from '../middlewares/errorHandler';
 
 /**
@@ -14,7 +14,7 @@ export interface JwtPayload {
  * Auth Response Interface
  */
 export interface AuthResponse {
-  user: Omit<IUser, 'password'>;
+  user: UserJSON;
   token: string;
   expiresIn: string;
 }
@@ -38,11 +38,19 @@ export interface LoginDTO {
  * Handles user registration, login, and JWT operations
  */
 export class AuthService {
-  private readonly JWT_SECRET: string;
+  private JWT_SECRET: string = '';
   private readonly JWT_EXPIRES_IN: string = '7d';
+  private initialized = false;
 
-  constructor() {
-    this.JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-key';
+  private ensureInitialized() {
+    if (!this.initialized) {
+      const secret = process.env.JWT_SECRET;
+      if (!secret) {
+        throw new Error('JWT_SECRET environment variable is not defined');
+      }
+      this.JWT_SECRET = secret;
+      this.initialized = true;
+    }
   }
 
   /**
@@ -70,7 +78,7 @@ export class AuthService {
     });
 
     return {
-      user: user.toJSON(),
+      user: user.toJSON() as UserJSON,
       token,
       expiresIn: this.JWT_EXPIRES_IN,
     };
@@ -101,7 +109,7 @@ export class AuthService {
     });
 
     return {
-      user: user.toJSON(),
+      user: user.toJSON() as UserJSON,
       token,
       expiresIn: this.JWT_EXPIRES_IN,
     };
@@ -110,22 +118,25 @@ export class AuthService {
   /**
    * Get user by ID
    */
-  async getUserById(userId: string): Promise<IUser> {
+  async getUserById(userId: string): Promise<UserJSON> {
     const user = await UserModel.findById(userId);
 
     if (!user) {
       throw new AppError('User not found', 404);
     }
 
-    return user;
+    return user.toJSON() as UserJSON;
   }
 
   /**
    * Generate JWT token
    */
   private generateToken(payload: JwtPayload): string {
+    this.ensureInitialized();
+    // Use number of days for expiresIn to avoid type issues with 'ms' module
+    const expiresInDays = 7;
     return jwt.sign(payload, this.JWT_SECRET, {
-      expiresIn: this.JWT_EXPIRES_IN,
+      expiresIn: expiresInDays * 24 * 60 * 60, // 7 days in seconds
     });
   }
 
@@ -133,9 +144,20 @@ export class AuthService {
    * Verify JWT token
    */
   verifyToken(token: string): JwtPayload {
+    this.ensureInitialized();
     try {
-      return jwt.verify(token, this.JWT_SECRET) as JwtPayload;
+      const decoded = jwt.verify(token, this.JWT_SECRET);
+      
+      // Ensure decoded has the expected shape
+      if (typeof decoded === 'string') {
+        throw new AppError('Invalid token format', 401);
+      }
+      
+      return decoded as JwtPayload;
     } catch (error) {
+      if (error instanceof AppError) {
+        throw error;
+      }
       throw new AppError('Invalid or expired token', 401);
     }
   }

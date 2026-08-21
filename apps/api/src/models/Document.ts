@@ -30,7 +30,24 @@ export interface IFile {
 }
 
 /**
- * Document Interface
+ * Document Data Interface (plain object)
+ */
+export interface IDocumentData {
+  _id: mongoose.Types.ObjectId;
+  userId: mongoose.Types.ObjectId;
+  title: string;
+  category: DocumentCategory;
+  file: IFile;
+  extractedData: Record<string, any>;
+  expirationDate: Date;
+  notifications: INotification[];
+  status: DocumentStatus;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/**
+ * Document Mongoose Interface (with methods)
  */
 export interface IDocument extends MongooseDocument {
   userId: mongoose.Types.ObjectId;
@@ -143,8 +160,8 @@ const DocumentSchema = new Schema<IDocument>(
     timestamps: true,
     toJSON: {
       transform: (_doc, ret) => {
-        delete ret.__v;
-        return ret;
+        const { __v: _v, ...rest } = ret;
+        return rest;
       },
     },
   }

@@ -2,9 +2,22 @@ import mongoose, { Schema, Document as MongooseDocument } from 'mongoose';
 import bcrypt from 'bcryptjs';
 
 /**
- * User Interface
+ * User Interface (without MongooseDocument fields for JSON output)
  */
-export interface IUser extends MongooseDocument {
+export interface IUser {
+  _id: mongoose.Types.ObjectId;
+  name: string;
+  email: string;
+  password: string;
+  avatar?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/**
+ * User Document Interface (with Mongoose methods)
+ */
+export interface IUserDocument extends MongooseDocument {
   name: string;
   email: string;
   password: string;
@@ -15,9 +28,14 @@ export interface IUser extends MongooseDocument {
 }
 
 /**
+ * User JSON representation (without password)
+ */
+export type UserJSON = Omit<IUser, 'password'>;
+
+/**
  * User Schema
  */
-const UserSchema = new Schema<IUser>(
+const UserSchema = new Schema<IUserDocument>(
   {
     name: {
       type: String,
@@ -49,9 +67,8 @@ const UserSchema = new Schema<IUser>(
     timestamps: true,
     toJSON: {
       transform: (_doc, ret) => {
-        delete ret.password;
-        delete ret.__v;
-        return ret;
+        const { password: _password, __v: _v, ...rest } = ret;
+        return rest;
       },
     },
   }
@@ -87,4 +104,4 @@ UserSchema.methods.comparePassword = async function (
 /**
  * User Model
  */
-export const UserModel = mongoose.model<IUser>('User', UserSchema);
+export const UserModel = mongoose.model<IUserDocument>('User', UserSchema);

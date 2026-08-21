@@ -1,4 +1,4 @@
-import multer, { FileFilterCallback, MemoryStorage } from 'multer';
+import multer, { FileFilterCallback } from 'multer';
 import { Request } from 'express';
 import { R2_CONFIG } from '../config/r2';
 import { AppError } from './errorHandler';
@@ -7,7 +7,7 @@ import { AppError } from './errorHandler';
  * Multer Memory Storage Configuration
  * Stores files in memory as buffers for processing before R2 upload
  */
-const storage: MemoryStorage = multer.memoryStorage();
+const storage = multer.memoryStorage();
 
 /**
  * File Filter
