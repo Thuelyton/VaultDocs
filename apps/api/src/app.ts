@@ -7,6 +7,7 @@ import { notFoundHandler } from './middlewares/notFoundHandler';
 // Import routes
 import { documentRoutes } from './routes/document.routes';
 import { authRoutes } from './routes/auth.routes';
+import { uploadRoutes } from './routes/upload.routes';
 
 const app: Application = express();
 
@@ -52,6 +53,7 @@ app.get('/health', (req: Request, res: Response) => {
 // ===========================================
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/documents', documentRoutes);
+app.use('/api/v1/upload', uploadRoutes);
 
 // ===========================================
 // 404 Handler
