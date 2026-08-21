@@ -6,6 +6,7 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { BottomTabNavigator } from './BottomTabNavigator';
+import { DocumentDetailScreen } from '../screens/DocumentDetailScreen';
 import { colors } from '../styles/theme';
 
 export type AppStackParamList = {
@@ -37,16 +38,11 @@ export function AppNavigator() {
       />
       <Stack.Screen 
         name="DocumentDetail" 
-        component={PlaceholderDetailScreen}
-        options={{ title: 'Detalhes do Documento' }}
+        component={DocumentDetailScreen}
+        options={{ headerShown: false }}
       />
     </Stack.Navigator>
   );
-}
-
-// Placeholder for document detail screen
-function PlaceholderDetailScreen() {
-  return null;
 }
 
 export default AppNavigator;

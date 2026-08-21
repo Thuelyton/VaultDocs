@@ -1,19 +1,70 @@
 /**
- * ProfileScreen - Premium SaaS Design
- * User profile and settings
+ * ProfileScreen - Real API Integration
+ * User profile with real data from AuthContext and API
  */
 
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  ScrollView, 
+  TouchableOpacity, 
+  Alert,
+  RefreshControl 
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, typography, borderRadius, shadows } from '../styles/theme';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components';
+import { documentService, DocumentStats } from '../services/documentService';
 
 export function ProfileScreen() {
-  const { user, logout } = useAuth();
+  const { user, logout, refreshUser } = useAuth();
+  const [stats, setStats] = useState<DocumentStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
+  /**
+   * Load user stats from API
+   */
+  const loadStats = useCallback(async (showLoading = true) => {
+    try {
+      if (showLoading) setLoading(true);
+      setError(null);
+
+      const statsResult = await documentService.getStats();
+      setStats(statsResult);
+    } catch (err: any) {
+      console.error('Error loading stats:', err);
+      setError(err.message || 'Erro ao carregar estatísticas');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  /**
+   * Load on mount
+   */
+  useEffect(() => {
+    loadStats();
+  }, [loadStats]);
+
+  /**
+   * Handle pull to refresh
+   */
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    loadStats(false);
+    refreshUser();
+  }, [loadStats, refreshUser]);
+
+  /**
+   * Handle logout
+   */
   const handleLogout = () => {
     Alert.alert(
       'Sair',
@@ -25,9 +76,36 @@ export function ProfileScreen() {
     );
   };
 
+  /**
+   * Get total documents count
+   */
+  const getTotalDocuments = () => {
+    if (!stats) return 0;
+    return Object.values(stats.byStatus).reduce((sum, count) => sum + count, 0);
+  };
+
+  /**
+   * Get active documents count
+   */
+  const getActiveDocuments = () => {
+    return stats?.byStatus.active || 0;
+  };
+
+  /**
+   * Get archived documents count
+   */
+  const getArchivedDocuments = () => {
+    return stats?.byStatus.archived || 0;
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.title}>Perfil</Text>
@@ -42,23 +120,64 @@ export function ProfileScreen() {
           </View>
           <Text style={styles.userName}>{user?.name || 'Usuário'}</Text>
           <Text style={styles.userEmail}>{user?.email || 'email@example.com'}</Text>
+          {user?.createdAt && (
+            <Text style={styles.memberSince}>
+              Membro desde {new Date(user.createdAt).toLocaleDateString('pt-BR', {
+                month: 'long',
+                year: 'numeric',
+              })}
+            </Text>
+          )}
         </View>
 
         {/* Stats */}
-        <View style={styles.statsRow}>
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>12</Text>
-            <Text style={styles.statLabel}>Documentos</Text>
+        {loading ? (
+          <View style={styles.statsRow}>
+            <View style={styles.statItem}>
+              <View style={styles.skeletonStat} />
+            </View>
+            <View style={[styles.statItem, styles.statBorder]}>
+              <View style={styles.skeletonStat} />
+            </View>
+            <View style={styles.statItem}>
+              <View style={styles.skeletonStat} />
+            </View>
           </View>
-          <View style={[styles.statItem, styles.statBorder]}>
-            <Text style={styles.statValue}>3</Text>
-            <Text style={styles.statLabel}>Vencendo</Text>
+        ) : error ? (
+          <View style={styles.errorStats}>
+            <Text style={styles.errorStatsText}>Erro ao carregar estatísticas</Text>
           </View>
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>2</Text>
-            <Text style={styles.statLabel}>Arquivados</Text>
+        ) : (
+          <View style={styles.statsRow}>
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>{getTotalDocuments()}</Text>
+              <Text style={styles.statLabel}>Total</Text>
+            </View>
+            <View style={[styles.statItem, styles.statBorder]}>
+              <Text style={styles.statValue}>{getActiveDocuments()}</Text>
+              <Text style={styles.statLabel}>Ativos</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>{getArchivedDocuments()}</Text>
+              <Text style={styles.statLabel}>Arquivados</Text>
+            </View>
           </View>
-        </View>
+        )}
+
+        {/* Categories breakdown */}
+        {stats && Object.keys(stats.byCategory).length > 0 && (
+          <View style={styles.categoriesCard}>
+            <Text style={styles.categoriesTitle}>Por Categoria</Text>
+            <View style={styles.categoriesGrid}>
+              {Object.entries(stats.byCategory).map(([category, count]) => (
+                <View key={category} style={styles.categoryItem}>
+                  <Text style={styles.categoryCount}>{count}</Text>
+                  <Text style={styles.categoryName}>{category.toUpperCase()}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
 
         {/* Menu Items */}
         <View style={styles.menuSection}>
@@ -73,7 +192,6 @@ export function ProfileScreen() {
             icon="notifications-outline"
             title="Notificações"
             onPress={() => console.log('Notifications')}
-            rightBadge="3"
           />
           <MenuItem
             icon="shield-checkmark-outline"
@@ -230,6 +348,11 @@ const styles = StyleSheet.create({
     color: colors.text.secondary,
     marginTop: spacing.xs,
   },
+  memberSince: {
+    fontSize: typography.fontSize.sm,
+    color: colors.text.tertiary,
+    marginTop: spacing.sm,
+  },
   
   // Stats
   statsRow: {
@@ -259,6 +382,63 @@ const styles = StyleSheet.create({
     fontSize: typography.fontSize.sm,
     color: colors.text.secondary,
     marginTop: spacing.xs,
+  },
+  skeletonStat: {
+    width: 40,
+    height: 40,
+    backgroundColor: colors.zinc[200],
+    borderRadius: borderRadius.md,
+  },
+  errorStats: {
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.xl,
+    padding: spacing.md,
+    backgroundColor: '#FEE2E2',
+    borderRadius: borderRadius.card,
+    alignItems: 'center',
+  },
+  errorStatsText: {
+    fontSize: typography.fontSize.sm,
+    color: colors.status.expired.text,
+  },
+  
+  // Categories
+  categoriesCard: {
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.xl,
+    backgroundColor: colors.white,
+    borderRadius: borderRadius.card,
+    padding: spacing.md,
+    ...shadows.sm,
+  },
+  categoriesTitle: {
+    fontSize: typography.fontSize.md,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.text.primary,
+    marginBottom: spacing.md,
+  },
+  categoriesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  categoryItem: {
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    backgroundColor: colors.zinc[100],
+    borderRadius: borderRadius.md,
+    minWidth: 70,
+  },
+  categoryCount: {
+    fontSize: typography.fontSize.lg,
+    fontWeight: typography.fontWeight.bold,
+    color: colors.primary.DEFAULT,
+  },
+  categoryName: {
+    fontSize: typography.fontSize.xs,
+    color: colors.text.secondary,
+    marginTop: 2,
   },
   
   // Menu

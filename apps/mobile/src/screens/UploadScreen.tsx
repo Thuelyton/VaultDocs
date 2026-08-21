@@ -1,6 +1,6 @@
 /**
- * UploadScreen - Premium SaaS Design
- * Smart upload flow with camera and AI analysis
+ * UploadScreen - Real Upload Flow
+ * Camera, Gallery, and Document selection
  */
 
 import React, { useState } from 'react';
@@ -10,191 +10,419 @@ import {
   StyleSheet, 
   TouchableOpacity,
   Alert,
-  ActivityIndicator
+  ActivityIndicator,
+  Image,
+  ScrollView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system';
 import { colors, spacing, typography, borderRadius, shadows } from '../styles/theme';
-import { Button } from '../components';
+import { Button, Input } from '../components';
+import { uploadService } from '../services/uploadService';
+import { documentService, DocumentCategory } from '../services/documentService';
 
-type UploadState = 'idle' | 'capturing' | 'analyzing' | 'complete';
+type UploadState = 'idle' | 'selected' | 'uploading' | 'success' | 'error';
+
+interface SelectedFile {
+  uri: string;
+  name: string;
+  type: string;
+  size: number;
+}
 
 export function UploadScreen() {
   const [uploadState, setUploadState] = useState<UploadState>('idle');
-  const [extractedData, setExtractedData] = useState<any>(null);
+  const [selectedFile, setSelectedFile] = useState<SelectedFile | null>(null);
+  const [title, setTitle] = useState('');
+  const [category, setCategory] = useState<DocumentCategory>('outros');
+  const [expirationDate, setExpirationDate] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
-  const handleCapture = async () => {
-    setUploadState('capturing');
-    
-    // Simulate camera capture
-    setTimeout(() => {
-      setUploadState('analyzing');
-      
-      // Simulate AI analysis
-      setTimeout(() => {
-        setExtractedData({
-          type: 'CNH',
-          name: 'João Silva',
-          cpf: '123.456.789-00',
-          expiryDate: '2025-06-15',
-          registry: 'SP-123456789',
+  const categories: { value: DocumentCategory; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
+    { value: 'cnh', label: 'CNH', icon: 'car-outline' },
+    { value: 'rg', label: 'RG', icon: 'card-outline' },
+    { value: 'boleto', label: 'Boleto', icon: 'receipt-outline' },
+    { value: 'contrato', label: 'Contrato', icon: 'document-text-outline' },
+    { value: 'garantia', label: 'Garantia', icon: 'shield-checkmark-outline' },
+    { value: 'outros', label: 'Outros', icon: 'folder-outline' },
+  ];
+
+  /**
+   * Pick image from camera
+   */
+  const pickFromCamera = async () => {
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permissão necessária', 'Precisamos de acesso à câmera para fotos.');
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        const asset = result.assets[0];
+        setSelectedFile({
+          uri: asset.uri,
+          name: asset.fileName || `photo_${Date.now()}.jpg`,
+          type: asset.mimeType || 'image/jpeg',
+          size: asset.fileSize || 0,
         });
-        setUploadState('complete');
-      }, 2500);
-    }, 1000);
+        setUploadState('selected');
+      }
+    } catch (err: any) {
+      console.error('Camera error:', err);
+      Alert.alert('Erro', 'Não foi possível acessar a câmera.');
+    }
   };
 
-  const handleReset = () => {
+  /**
+   * Pick image from gallery
+   */
+  const pickFromGallery = async () => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permissão necessária', 'Precisamos de acesso à galeria.');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        const asset = result.assets[0];
+        setSelectedFile({
+          uri: asset.uri,
+          name: asset.fileName || `image_${Date.now()}.jpg`,
+          type: asset.mimeType || 'image/jpeg',
+          size: asset.fileSize || 0,
+        });
+        setUploadState('selected');
+      }
+    } catch (err: any) {
+      console.error('Gallery error:', err);
+      Alert.alert('Erro', 'Não foi possível acessar a galeria.');
+    }
+  };
+
+  /**
+   * Pick document file
+   */
+  const pickDocument = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'],
+        copyToCacheDirectory: true,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        const asset = result.assets[0];
+        setSelectedFile({
+          uri: asset.uri,
+          name: asset.name,
+          type: asset.mimeType || 'application/octet-stream',
+          size: asset.size || 0,
+        });
+        setUploadState('selected');
+      }
+    } catch (err: any) {
+      console.error('Document picker error:', err);
+      Alert.alert('Erro', 'Não foi possível selecionar o arquivo.');
+    }
+  };
+
+  /**
+   * Validate form
+   */
+  const validate = (): boolean => {
+    if (!selectedFile) {
+      Alert.alert('Erro', 'Selecione um arquivo primeiro.');
+      return false;
+    }
+    if (!title.trim()) {
+      Alert.alert('Erro', 'Informe um título para o documento.');
+      return false;
+    }
+    if (!expirationDate.trim()) {
+      Alert.alert('Erro', 'Informe a data de vencimento.');
+      return false;
+    }
+    // Validate date format (DD/MM/YYYY)
+    const dateRegex = /^\d{2}\/\d{2}\/\d{4}$/;
+    if (!dateRegex.test(expirationDate)) {
+      Alert.alert('Erro', 'Formato de data inválido. Use DD/MM/AAAA.');
+      return false;
+    }
+    return true;
+  };
+
+  /**
+   * Upload file to API
+   */
+  const handleUpload = async () => {
+    if (!validate()) return;
+
+    setUploadState('uploading');
+    setError(null);
+
+    try {
+      // Convert date from DD/MM/YYYY to ISO format
+      const [day, month, year] = expirationDate.split('/');
+      const isoDate = `${year}-${month}-${day}T00:00:00.000Z`;
+
+      // Upload and create document
+      await uploadService.uploadAndCreateDocument(
+        selectedFile!.uri,
+        title.trim(),
+        category,
+        isoDate
+      );
+
+      setUploadState('success');
+      
+      // Reset form after 2 seconds
+      setTimeout(() => {
+        resetForm();
+      }, 2000);
+    } catch (err: any) {
+      console.error('Upload error:', err);
+      setError(err.message || 'Erro ao fazer upload do arquivo.');
+      setUploadState('error');
+    }
+  };
+
+  /**
+   * Reset form
+   */
+  const resetForm = () => {
+    setSelectedFile(null);
+    setTitle('');
+    setCategory('outros');
+    setExpirationDate('');
+    setError(null);
     setUploadState('idle');
-    setExtractedData(null);
+  };
+
+  /**
+   * Cancel selection
+   */
+  const handleCancel = () => {
+    setSelectedFile(null);
+    setUploadState('idle');
+  };
+
+  /**
+   * Format file size
+   */
+  const formatFileSize = (bytes: number): string => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  /**
+   * Check if file is image
+   */
+  const isImage = (type: string): boolean => {
+    return type.startsWith('image/');
   };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Novo Documento</Text>
-        <Text style={styles.subtitle}>Escanear ou selecionar arquivo</Text>
-      </View>
-
-      {uploadState === 'idle' && (
-        <View style={styles.content}>
-          {/* Camera Capture */}
-          <TouchableOpacity 
-            style={styles.captureButton}
-            onPress={handleCapture}
-            activeOpacity={0.8}
-          >
-            <View style={styles.captureIconContainer}>
-              <Ionicons name="camera" size={48} color={colors.white} />
-            </View>
-            <Text style={styles.captureTitle}>Tirar foto</Text>
-            <Text style={styles.captureSubtitle}>
-              Capture o documento com a câmera
-            </Text>
-          </TouchableOpacity>
-
-          {/* Divider */}
-          <View style={styles.divider}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>ou</Text>
-            <View style={styles.dividerLine} />
-          </View>
-
-          {/* Other options */}
-          <View style={styles.optionsContainer}>
-            <OptionButton
-              icon="images-outline"
-              title="Galeria"
-              subtitle="Selecionar foto existente"
-              onPress={() => console.log('Gallery')}
-            />
-            <OptionButton
-              icon="document-outline"
-              title="Arquivo"
-              subtitle="PDF ou outro documento"
-              onPress={() => console.log('File')}
-            />
-          </View>
+      <ScrollView showsVerticalScrollIndicator={false}>
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.title}>Novo Documento</Text>
+          <Text style={styles.subtitle}>Adicione um documento ao seu cofre</Text>
         </View>
-      )}
 
-      {uploadState === 'capturing' && (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary.DEFAULT} />
-          <Text style={styles.loadingText}>Capturando documento...</Text>
-        </View>
-      )}
-
-      {uploadState === 'analyzing' && (
-        <View style={styles.loadingContainer}>
-          <View style={styles.aiIndicator}>
-            <Ionicons name="sparkles" size={32} color={colors.primary.DEFAULT} />
+        {/* Success State */}
+        {uploadState === 'success' && (
+          <View style={styles.successContainer}>
+            <Ionicons name="checkmark-circle" size={80} color={colors.status.active.dot} />
+            <Text style={styles.successTitle}>Documento salvo!</Text>
+            <Text style={styles.successSubtitle}>Seu documento foi adicionado com sucesso.</Text>
           </View>
-          <ActivityIndicator size="large" color={colors.primary.DEFAULT} style={styles.spinner} />
-          <Text style={styles.loadingTitle}>Analisando documento com IA...</Text>
-          <Text style={styles.loadingSubtitle}>
-            Identificando tipo e extraindo dados
-          </Text>
-        </View>
-      )}
+        )}
 
-      {uploadState === 'complete' && extractedData && (
-        <View style={styles.completeContainer}>
-          <View style={styles.successIcon}>
-            <Ionicons name="checkmark-circle" size={56} color={colors.status.active.dot} />
-          </View>
-          
-          <Text style={styles.successTitle}>Documento analisado!</Text>
-          
-          {/* Extracted Data Card */}
-          <View style={styles.extractedCard}>
-            <View style={styles.extractedHeader}>
-              <Ionicons name="document-text" size={20} color={colors.primary.DEFAULT} />
-              <Text style={styles.extractedType}>{extractedData.type}</Text>
-            </View>
+        {/* Idle State - Source Selection */}
+        {uploadState === 'idle' && (
+          <View style={styles.content}>
+            <Text style={styles.sectionTitle}>Escolha a origem</Text>
             
-            <DataField label="Nome" value={extractedData.name} />
-            <DataField label="CPF" value={extractedData.cpf} />
-            <DataField label="Validade" value={extractedData.expiryDate} />
-            <DataField label="Registro" value={extractedData.registry} />
-          </View>
+            <TouchableOpacity 
+              style={styles.sourceButton}
+              onPress={pickFromCamera}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.sourceIcon, { backgroundColor: '#EEF2FF' }]}>
+                <Ionicons name="camera" size={28} color={colors.primary.DEFAULT} />
+              </View>
+              <View style={styles.sourceContent}>
+                <Text style={styles.sourceTitle}>Tirar foto</Text>
+                <Text style={styles.sourceSubtitle}>Capture o documento com a câmera</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={24} color={colors.zinc[300]} />
+            </TouchableOpacity>
 
-          <View style={styles.actions}>
-            <Button
-              title="Confirmar e salvar"
-              onPress={() => console.log('Save')}
-              fullWidth
-              style={styles.saveButton}
-            />
-            <Button
-              title="Editar dados"
-              onPress={() => console.log('Edit')}
-              variant="outline"
-              fullWidth
-            />
-            <TouchableOpacity onPress={handleReset}>
-              <Text style={styles.resetLink}>Escanear novamente</Text>
+            <TouchableOpacity 
+              style={styles.sourceButton}
+              onPress={pickFromGallery}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.sourceIcon, { backgroundColor: '#F0FDF4' }]}>
+                <Ionicons name="images" size={28} color="#10B981" />
+              </View>
+              <View style={styles.sourceContent}>
+                <Text style={styles.sourceTitle}>Galeria</Text>
+                <Text style={styles.sourceSubtitle}>Selecionar foto existente</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={24} color={colors.zinc[300]} />
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={styles.sourceButton}
+              onPress={pickDocument}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.sourceIcon, { backgroundColor: '#FEF3C7' }]}>
+                <Ionicons name="document" size={28} color="#F59E0B" />
+              </View>
+              <View style={styles.sourceContent}>
+                <Text style={styles.sourceTitle}>Arquivo</Text>
+                <Text style={styles.sourceSubtitle}>PDF ou outro documento</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={24} color={colors.zinc[300]} />
             </TouchableOpacity>
           </View>
-        </View>
-      )}
+        )}
+
+        {/* Selected State - Preview and Form */}
+        {(uploadState === 'selected' || uploadState === 'uploading' || uploadState === 'error') && selectedFile && (
+          <View style={styles.content}>
+            {/* Preview */}
+            <View style={styles.previewContainer}>
+              {isImage(selectedFile.type) ? (
+                <Image source={{ uri: selectedFile.uri }} style={styles.previewImage} />
+              ) : (
+                <View style={styles.previewDocument}>
+                  <Ionicons name="document-text" size={48} color={colors.primary.DEFAULT} />
+                  <Text style={styles.previewFileName} numberOfLines={1}>
+                    {selectedFile.name}
+                  </Text>
+                </View>
+              )}
+              
+              <TouchableOpacity 
+                style={styles.changeFileButton}
+                onPress={handleCancel}
+              >
+                <Ionicons name="close-circle" size={24} color={colors.white} />
+              </TouchableOpacity>
+            </View>
+
+            {/* File Info */}
+            <View style={styles.fileInfo}>
+              <Text style={styles.fileName} numberOfLines={1}>{selectedFile.name}</Text>
+              <Text style={styles.fileSize}>{formatFileSize(selectedFile.size)}</Text>
+            </View>
+
+            {/* Form */}
+            <View style={styles.form}>
+              <Input
+                label="Título do documento"
+                placeholder="Ex: CNH, Contrato de Aluguel..."
+                value={title}
+                onChangeText={setTitle}
+                leftIcon="document-text-outline"
+                editable={uploadState !== 'uploading'}
+              />
+
+              <Text style={styles.label}>Categoria</Text>
+              <View style={styles.categoriesContainer}>
+                {categories.map((cat) => (
+                  <TouchableOpacity
+                    key={cat.value}
+                    style={[
+                      styles.categoryChip,
+                      category === cat.value && styles.categoryChipActive
+                    ]}
+                    onPress={() => setCategory(cat.value)}
+                    disabled={uploadState === 'uploading'}
+                  >
+                    <Ionicons 
+                      name={cat.icon} 
+                      size={16} 
+                      color={category === cat.value ? colors.white : colors.text.secondary} 
+                    />
+                    <Text style={[
+                      styles.categoryChipText,
+                      category === cat.value && styles.categoryChipTextActive
+                    ]}>
+                      {cat.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <Input
+                label="Data de vencimento"
+                placeholder="DD/MM/AAAA"
+                value={expirationDate}
+                onChangeText={setExpirationDate}
+                leftIcon="calendar-outline"
+                keyboardType="numeric"
+                maxLength={10}
+                editable={uploadState !== 'uploading'}
+              />
+            </View>
+
+            {/* Error */}
+            {error && (
+              <View style={styles.errorContainer}>
+                <Ionicons name="alert-circle" size={20} color={colors.status.expired.text} />
+                <Text style={styles.errorText}>{error}</Text>
+              </View>
+            )}
+
+            {/* Actions */}
+            <View style={styles.actions}>
+              <Button
+                title={uploadState === 'uploading' ? 'Enviando...' : 'Enviar documento'}
+                onPress={handleUpload}
+                loading={uploadState === 'uploading'}
+                disabled={uploadState === 'uploading'}
+                fullWidth
+                leftIcon={uploadState === 'uploading' ? undefined : 'cloud-upload-outline'}
+              />
+              
+              <Button
+                title="Cancelar"
+                onPress={resetForm}
+                variant="ghost"
+                fullWidth
+                disabled={uploadState === 'uploading'}
+              />
+            </View>
+          </View>
+        )}
+      </ScrollView>
     </SafeAreaView>
-  );
-}
-
-// Option Button Component
-function OptionButton({ 
-  icon, 
-  title, 
-  subtitle, 
-  onPress 
-}: { 
-  icon: keyof typeof Ionicons.glyphMap;
-  title: string;
-  subtitle: string;
-  onPress: () => void;
-}) {
-  return (
-    <TouchableOpacity style={styles.optionButton} onPress={onPress} activeOpacity={0.7}>
-      <View style={styles.optionIcon}>
-        <Ionicons name={icon} size={24} color={colors.text.primary} />
-      </View>
-      <View style={styles.optionContent}>
-        <Text style={styles.optionTitle}>{title}</Text>
-        <Text style={styles.optionSubtitle}>{subtitle}</Text>
-      </View>
-      <Ionicons name="chevron-forward" size={20} color={colors.zinc[300]} />
-    </TouchableOpacity>
-  );
-}
-
-// Data Field Component
-function DataField({ label, value }: { label: string; value: string }) {
-  return (
-    <View style={styles.dataField}>
-      <Text style={styles.dataLabel}>{label}</Text>
-      <Text style={styles.dataValue}>{value}</Text>
-    </View>
   );
 }
 
@@ -219,189 +447,183 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
   content: {
-    flex: 1,
     paddingHorizontal: spacing.lg,
   },
   
-  // Capture Button
-  captureButton: {
-    backgroundColor: colors.primary.DEFAULT,
-    borderRadius: borderRadius.xl,
-    padding: spacing.xl,
-    alignItems: 'center',
-    marginBottom: spacing.xl,
-    ...shadows.lg,
-  },
-  captureIconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.md,
-  },
-  captureTitle: {
+  // Section Title
+  sectionTitle: {
     fontSize: typography.fontSize.lg,
     fontWeight: typography.fontWeight.semibold,
-    color: colors.white,
-    marginBottom: spacing.xs,
-  },
-  captureSubtitle: {
-    fontSize: typography.fontSize.sm,
-    color: 'rgba(255,255,255,0.8)',
+    color: colors.text.primary,
+    marginBottom: spacing.md,
   },
   
-  // Divider
-  divider: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: spacing.xl,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: colors.border.default,
-  },
-  dividerText: {
-    paddingHorizontal: spacing.md,
-    color: colors.text.tertiary,
-    fontSize: typography.fontSize.sm,
-  },
-  
-  // Options
-  optionsContainer: {
-    gap: spacing.sm,
-  },
-  optionButton: {
+  // Source Buttons
+  sourceButton: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.white,
     borderRadius: borderRadius.card,
     padding: spacing.md,
+    marginBottom: spacing.sm,
     ...shadows.sm,
   },
-  optionIcon: {
-    width: 48,
-    height: 48,
+  sourceIcon: {
+    width: 56,
+    height: 56,
     borderRadius: borderRadius.lg,
-    backgroundColor: colors.zinc[100],
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: spacing.md,
   },
-  optionContent: {
+  sourceContent: {
     flex: 1,
   },
-  optionTitle: {
+  sourceTitle: {
     fontSize: typography.fontSize.md,
-    fontWeight: typography.fontWeight.medium,
+    fontWeight: typography.fontWeight.semibold,
     color: colors.text.primary,
   },
-  optionSubtitle: {
+  sourceSubtitle: {
     fontSize: typography.fontSize.sm,
     color: colors.text.secondary,
     marginTop: 2,
   },
   
-  // Loading
-  loadingContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: spacing.xl,
-  },
-  loadingText: {
-    fontSize: typography.fontSize.md,
-    color: colors.text.secondary,
-    marginTop: spacing.lg,
-  },
-  aiIndicator: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: colors.primary[50],
-    alignItems: 'center',
-    justifyContent: 'center',
+  // Preview
+  previewContainer: {
+    position: 'relative',
     marginBottom: spacing.md,
   },
-  spinner: {
+  previewImage: {
+    width: '100%',
+    height: 200,
+    borderRadius: borderRadius.card,
+    backgroundColor: colors.zinc[100],
+  },
+  previewDocument: {
+    width: '100%',
+    height: 150,
+    borderRadius: borderRadius.card,
+    backgroundColor: colors.zinc[100],
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  previewFileName: {
+    fontSize: typography.fontSize.sm,
+    color: colors.text.secondary,
+    marginTop: spacing.sm,
+    paddingHorizontal: spacing.md,
+    textAlign: 'center',
+  },
+  changeFileButton: {
+    position: 'absolute',
+    top: spacing.sm,
+    right: spacing.sm,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  
+  // File Info
+  fileInfo: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.lg,
+    paddingHorizontal: spacing.xs,
+  },
+  fileName: {
+    flex: 1,
+    fontSize: typography.fontSize.sm,
+    color: colors.text.primary,
+    fontWeight: typography.fontWeight.medium,
+  },
+  fileSize: {
+    fontSize: typography.fontSize.sm,
+    color: colors.text.tertiary,
+    marginLeft: spacing.sm,
+  },
+  
+  // Form
+  form: {
     marginBottom: spacing.lg,
   },
-  loadingTitle: {
-    fontSize: typography.fontSize.lg,
-    fontWeight: typography.fontWeight.semibold,
+  label: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium,
     color: colors.text.primary,
     marginBottom: spacing.sm,
   },
-  loadingSubtitle: {
-    fontSize: typography.fontSize.md,
+  categoriesContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    marginBottom: spacing.lg,
+  },
+  categoryChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.full,
+    backgroundColor: colors.zinc[100],
+    gap: spacing.xs,
+  },
+  categoryChipActive: {
+    backgroundColor: colors.primary.DEFAULT,
+  },
+  categoryChipText: {
+    fontSize: typography.fontSize.sm,
     color: colors.text.secondary,
-    textAlign: 'center',
+  },
+  categoryChipTextActive: {
+    color: colors.white,
+    fontWeight: typography.fontWeight.medium,
   },
   
-  // Complete
-  completeContainer: {
-    flex: 1,
-    paddingHorizontal: spacing.lg,
-  },
-  successIcon: {
+  // Error
+  errorContainer: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: spacing.md,
+    padding: spacing.md,
+    backgroundColor: '#FEE2E2',
+    borderRadius: borderRadius.md,
+    marginBottom: spacing.lg,
+  },
+  errorText: {
+    flex: 1,
+    fontSize: typography.fontSize.sm,
+    color: colors.status.expired.text,
+    marginLeft: spacing.sm,
+  },
+  
+  // Actions
+  actions: {
+    gap: spacing.sm,
+    marginBottom: spacing.xl,
+  },
+  
+  // Success
+  successContainer: {
+    alignItems: 'center',
+    paddingVertical: spacing.xxxl,
+    paddingHorizontal: spacing.xl,
   },
   successTitle: {
     fontSize: typography.fontSize.xl,
     fontWeight: typography.fontWeight.semibold,
     color: colors.text.primary,
-    textAlign: 'center',
-    marginBottom: spacing.xl,
+    marginTop: spacing.lg,
   },
-  extractedCard: {
-    backgroundColor: colors.white,
-    borderRadius: borderRadius.card,
-    padding: spacing.lg,
-    marginBottom: spacing.xl,
-    ...shadows.sm,
-  },
-  extractedHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: spacing.md,
-    paddingBottom: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border.default,
-  },
-  extractedType: {
-    fontSize: typography.fontSize.lg,
-    fontWeight: typography.fontWeight.semibold,
-    color: colors.primary.DEFAULT,
-    marginLeft: spacing.sm,
-  },
-  dataField: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: spacing.sm,
-  },
-  dataLabel: {
+  successSubtitle: {
     fontSize: typography.fontSize.md,
     color: colors.text.secondary,
-  },
-  dataValue: {
-    fontSize: typography.fontSize.md,
-    fontWeight: typography.fontWeight.medium,
-    color: colors.text.primary,
-  },
-  actions: {
-    gap: spacing.md,
-  },
-  saveButton: {
-    marginBottom: spacing.sm,
-  },
-  resetLink: {
-    fontSize: typography.fontSize.md,
-    color: colors.primary.DEFAULT,
+    marginTop: spacing.sm,
     textAlign: 'center',
-    fontWeight: typography.fontWeight.medium,
   },
 });
 
