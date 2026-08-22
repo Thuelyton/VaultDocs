@@ -11,4 +11,4 @@ export {
   ExtractedPerson,
   ExtractedAddress,
 } from './AIProvider';
-export { OpenAIProvider } from './OpenAIProvider';
+export { GeminiProvider } from './GeminiProvider';

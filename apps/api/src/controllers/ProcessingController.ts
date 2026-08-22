@@ -7,7 +7,7 @@ import { Response } from 'express';
 import { AuthenticatedRequest } from '../middlewares/authenticate';
 import { DocumentProcessingService } from '../services/DocumentProcessingService';
 import { TesseractOCRProvider } from '../services/ocr/TesseractOCRProvider';
-import { OpenAIProvider } from '../services/ai/OpenAIProvider';
+import { GeminiProvider } from '../services/ai/GeminiProvider';
 import { DocumentModel } from '../models/Document';
 import { storageService } from '../services/StorageService';
 import { AppError } from '../middlewares/errorHandler';
@@ -17,7 +17,7 @@ import mongoose from 'mongoose';
  * Initialize providers
  */
 const ocrProvider = new TesseractOCRProvider();
-const aiProvider = new OpenAIProvider();
+const aiProvider = new GeminiProvider();
 const processingService = new DocumentProcessingService(ocrProvider, aiProvider);
 
 /**
