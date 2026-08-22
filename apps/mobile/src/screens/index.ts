@@ -12,3 +12,5 @@ export { DocumentsScreen } from './DocumentsScreen';
 export { UploadScreen } from './UploadScreen';
 export { ExpiringScreen } from './ExpiringScreen';
 export { ProfileScreen } from './ProfileScreen';
+export { DocumentDetailScreen } from './DocumentDetailScreen';
+export { ProcessingScreen } from './ProcessingScreen';

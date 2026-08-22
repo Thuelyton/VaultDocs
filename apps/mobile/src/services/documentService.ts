@@ -111,6 +111,16 @@ export interface DocumentStats {
 }
 
 /**
+ * Processing Status Interface
+ */
+export interface ProcessingStatus {
+  status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'REVIEW_REQUIRED' | 'FAILED';
+  error?: string;
+  processedAt?: string;
+  processingTime?: number;
+}
+
+/**
  * Document Service class
  */
 class DocumentService {
@@ -180,6 +190,47 @@ class DocumentService {
    */
   async deleteDocument(id: string): Promise<void> {
     await apiClient.delete(`/documents/${id}`);
+  }
+
+  /**
+   * Process document (OCR + AI extraction)
+   */
+  async processDocument(id: string): Promise<{ documentId: string; status: string }> {
+    const response = await apiClient.post<{ status: string; data: { documentId: string; status: string } }>(
+      `/documents/${id}/process`
+    );
+    return response.data.data;
+  }
+
+  /**
+   * Get processing status
+   */
+  async getProcessingStatus(id: string): Promise<ProcessingStatus> {
+    const response = await apiClient.get<{ status: string; data: ProcessingStatus }>(
+      `/documents/${id}/processing`
+    );
+    return response.data.data;
+  }
+
+  /**
+   * Update extracted data manually
+   */
+  async updateExtractedData(id: string, data: Record<string, any>): Promise<void> {
+    await apiClient.patch(`/documents/${id}/extracted-data`, data);
+  }
+
+  /**
+   * Confirm extracted data
+   */
+  async confirmExtractedData(id: string): Promise<void> {
+    await apiClient.post(`/documents/${id}/confirm`);
+  }
+
+  /**
+   * Reprocess document
+   */
+  async reprocessDocument(id: string): Promise<void> {
+    await apiClient.post(`/documents/${id}/reprocess`);
   }
 
   /**

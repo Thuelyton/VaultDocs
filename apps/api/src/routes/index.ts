@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { documentRoutes } from './document.routes';
-// import { authRoutes } from './auth.routes';
+import { processingRoutes } from './processing.routes';
 
 const router = Router();
 
@@ -19,10 +19,10 @@ router.get('/health', (_req, res) => {
   });
 });
 
-// Authentication routes
-// router.use('/auth', authRoutes);
-
 // Document management routes
 router.use('/documents', documentRoutes);
+
+// Document processing routes
+router.use('/documents', processingRoutes);
 
 export { router as apiRoutes };

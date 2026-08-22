@@ -7,11 +7,13 @@ import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { BottomTabNavigator } from './BottomTabNavigator';
 import { DocumentDetailScreen } from '../screens/DocumentDetailScreen';
+import { ProcessingScreen } from '../screens/ProcessingScreen';
 import { colors } from '../styles/theme';
 
 export type AppStackParamList = {
   MainTabs: undefined;
   DocumentDetail: { id: string };
+  Processing: { documentId: string };
 };
 
 const Stack = createNativeStackNavigator<AppStackParamList>();
@@ -39,6 +41,11 @@ export function AppNavigator() {
       <Stack.Screen 
         name="DocumentDetail" 
         component={DocumentDetailScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen 
+        name="Processing" 
+        component={ProcessingScreen}
         options={{ headerShown: false }}
       />
     </Stack.Navigator>
