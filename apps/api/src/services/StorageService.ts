@@ -130,6 +130,36 @@ export class StorageService {
   }
 
   /**
+   * Download a file from R2 as Buffer
+   */
+  async getFileBuffer(storageKey: string): Promise<Buffer> {
+    const { GetObjectCommand } = await import('@aws-sdk/client-s3');
+    
+    const command = new GetObjectCommand({
+      Bucket: R2_CONFIG.bucketName,
+      Key: storageKey,
+    });
+
+    try {
+      const response = await r2Client.send(command);
+      
+      if (!response.Body) {
+        throw new AppError('File not found in storage', 404);
+      }
+
+      // Convert stream to buffer
+      const chunks: Uint8Array[] = [];
+      for await (const chunk of response.Body as any) {
+        chunks.push(chunk);
+      }
+      return Buffer.concat(chunks);
+    } catch (error) {
+      console.error('R2 Download Error:', error);
+      throw new AppError('Failed to download file from storage', 500);
+    }
+  }
+
+  /**
    * Generate a presigned URL for temporary access (private files)
    */
   async getPresignedUrl(storageKey: string, expiresIn: number = 3600): Promise<string> {

@@ -34,7 +34,7 @@ export interface Document {
   title: string;
   category: DocumentCategory;
   file: FileData;
-  extractedData: Record<string, any>;
+  extractedData: ExtractedDocumentData | Record<string, any>;
   expirationDate: string;
   notifications: Array<{
     daysBefore: number;
@@ -42,8 +42,57 @@ export interface Document {
     sentAt?: string;
   }>;
   status: DocumentStatus;
+  processing: {
+    status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'REVIEW_REQUIRED' | 'FAILED';
+    startedAt?: string;
+    processedAt?: string;
+    failedAt?: string;
+    error?: string;
+    processingTime?: number;
+    retryCount?: number;
+  };
   createdAt: string;
   updatedAt: string;
+}
+
+/**
+ * Extracted Document Data from AI
+ */
+export interface ExtractedDocumentData {
+  documentType?: string;
+  documentNumber?: string;
+  person?: {
+    name?: string;
+    cpf?: string;
+    rg?: string;
+    birthDate?: string;
+    gender?: string;
+    nationality?: string;
+    motherName?: string;
+    fatherName?: string;
+  };
+  address?: {
+    street?: string;
+    number?: string;
+    complement?: string;
+    neighborhood?: string;
+    city?: string;
+    state?: string;
+    zipCode?: string;
+  };
+  issueDate?: string;
+  expirationDate?: string;
+  issuer?: string;
+  department?: string;
+  amount?: number;
+  dueDate?: string;
+  barcode?: string;
+  validUntil?: string;
+  category?: string;
+  ocrText?: string;
+  ocrConfidence?: number;
+  confidence?: number;
+  additionalData?: Record<string, any>;
 }
 
 /**

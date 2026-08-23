@@ -52,12 +52,7 @@ export class ProcessingController {
       throw new AppError('Maximum retry attempts reached', 429);
     }
 
-    // For now, we'll process without fetching the file from R2
-    // In production, you'd fetch the file from R2 using the storageKey
-    // and pass it to the processing service
-    
-    // Start processing asynchronously
-    // In production, this should be done via a job queue
+    // Return immediately - processing happens in background
     res.status(202).json({
       status: 'success',
       message: 'Document processing started',
@@ -67,14 +62,39 @@ export class ProcessingController {
       },
     });
 
-    // Process in background (simplified - in production use a job queue)
-    // For now, we'll just update the status since we can't fetch from R2 without real credentials
-    await DocumentModel.findByIdAndUpdate(id, {
-      $set: {
-        'processing.status': 'PENDING',
-        'processing.error': 'R2 credentials not configured. Please configure R2 to enable document processing.',
-      },
-    });
+    // Process in background
+    this.processDocumentInBackground(id, document);
+  }
+
+  /**
+   * Background processing of document
+   */
+  private async processDocumentInBackground(
+    documentId: string,
+    document: any
+  ): Promise<void> {
+    try {
+      // Fetch file from R2
+      const fileBuffer = await storageService.getFileBuffer(document.file.storageKey);
+      
+      // Process document (OCR + AI)
+      await processingService.processDocument(
+        documentId,
+        document.userId.toString(),
+        fileBuffer,
+        document.file.mimeType
+      );
+    } catch (error: any) {
+      console.error('Background processing error:', error);
+      // Update status to failed
+      await DocumentModel.findByIdAndUpdate(documentId, {
+        $set: {
+          'processing.status': 'FAILED',
+          'processing.error': error.message || 'Processing failed',
+          'processing.failedAt': new Date(),
+        },
+      });
+    }
   }
 
   /**

@@ -138,10 +138,11 @@ export class DocumentController {
    * @query days - Number of days ahead (default: 30)
    */
   async getExpiring(req: AuthenticatedRequest, res: Response): Promise<void> {
+    const userId = req.userId!;
     const { days } = req.query;
     const daysAhead = days ? parseInt(days as string, 10) : 30;
 
-    const documents = await documentService.getExpiringDocuments(daysAhead);
+    const documents = await documentService.getExpiringDocuments(userId, daysAhead);
 
     res.status(200).json({
       status: 'success',

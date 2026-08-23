@@ -24,6 +24,8 @@ import { colors, spacing, typography, borderRadius, shadows } from '../styles/th
 import { Button, Input } from '../components';
 import { uploadService } from '../services/uploadService';
 import { documentService, DocumentCategory } from '../services/documentService';
+import { useNavigation } from '@react-navigation/native';
+import { MainTabNavigationProp } from '../navigation/types';
 
 type UploadState = 'idle' | 'selected' | 'uploading' | 'success' | 'error';
 
@@ -35,6 +37,7 @@ interface SelectedFile {
 }
 
 export function UploadScreen() {
+  const navigation = useNavigation<MainTabNavigationProp>();
   const [uploadState, setUploadState] = useState<UploadState>('idle');
   const [selectedFile, setSelectedFile] = useState<SelectedFile | null>(null);
   const [title, setTitle] = useState('');
@@ -184,19 +187,16 @@ export function UploadScreen() {
       const isoDate = `${year}-${month}-${day}T00:00:00.000Z`;
 
       // Upload and create document
-      await uploadService.uploadAndCreateDocument(
+      const response = await uploadService.uploadAndCreateDocument(
         selectedFile!.uri,
         title.trim(),
         category,
         isoDate
       );
 
-      setUploadState('success');
-      
-      // Reset form after 2 seconds
-      setTimeout(() => {
-        resetForm();
-      }, 2000);
+      // Navigate to Processing screen with document ID
+      const documentId = response.document._id;
+      navigation.navigate('Processing', { documentId });
     } catch (err: any) {
       console.error('Upload error:', err);
       setError(err.message || 'Erro ao fazer upload do arquivo.');

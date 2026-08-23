@@ -15,7 +15,7 @@ import {
  * Gemini Configuration
  */
 const GEMINI_CONFIG = {
-  model: 'gemini-1.5-flash',
+  model: 'gemini-1.5-flash', // Experimentar 'gemini-1.5-flash' ou 'gemini-pro'
   temperature: 0.1,
   maxOutputTokens: 1000,
 };

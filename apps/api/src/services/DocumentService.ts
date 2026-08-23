@@ -188,15 +188,15 @@ export class DocumentService {
   /**
    * Get documents expiring soon (for notifications)
    */
-  async getExpiringDocuments(daysAhead: number = 30): Promise<IDocument[]> {
+  async getExpiringDocuments(userId: string, daysAhead: number = 30): Promise<IDocument[]> {
     const futureDate = new Date();
     futureDate.setDate(futureDate.getDate() + daysAhead);
 
     const documents = await DocumentModel.find({
+      userId: new mongoose.Types.ObjectId(userId),
       status: 'active',
       expirationDate: {
         $lte: futureDate,
-        $gte: new Date(),
       },
       'notifications.sent': false,
     });
