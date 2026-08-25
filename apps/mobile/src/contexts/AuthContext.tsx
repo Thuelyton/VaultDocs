@@ -17,6 +17,7 @@ interface AuthContextType {
   register: (data: RegisterDTO) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
+  clearAuth: () => Promise<void>;
 }
 
 /**
@@ -30,6 +31,7 @@ const AuthContext = createContext<AuthContextType>({
   register: async () => {},
   logout: async () => {},
   refreshUser: async () => {},
+  clearAuth: async () => {},
 });
 
 /**
@@ -61,12 +63,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const isAuth = await authService.isAuthenticated();
       
       if (isAuth) {
-        const storedUser = await authService.getStoredUser();
-        setUser(storedUser);
-        
-        // Optionally refresh user data from API
-        // const freshUser = await authService.getMe();
-        // setUser(freshUser);
+        // Verify token by calling the API
+        try {
+          const freshUser = await authService.getMe();
+          setUser(freshUser);
+        } catch (apiError) {
+          // Token is invalid/expired, clear auth
+          console.log('Token invalid or expired, clearing auth');
+          await authService.logout();
+        }
       }
     } catch (error) {
       console.error('Auth check failed:', error);
@@ -112,6 +117,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   };
 
+  /**
+   * Clear auth data (for invalid/expired tokens)
+   */
+  const clearAuth = async () => {
+    await authService.logout();
+    setUser(null);
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -122,6 +135,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         register,
         logout,
         refreshUser,
+        clearAuth,
       }}
     >
       {children}

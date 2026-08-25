@@ -4,14 +4,13 @@
  */
 
 import React, { useState } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  ScrollView, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
   KeyboardAvoidingView,
   Platform,
-  Alert,
   TouchableOpacity,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,6 +18,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../contexts/AuthContext';
 import { Button, Input } from '../components';
 import { colors, spacing, typography, borderRadius } from '../styles/theme';
+import Alert from '../utils/alert';
 
 interface RegisterScreenProps {
   navigation: any;

@@ -4,7 +4,7 @@
  */
 
 import apiClient from '../api/client';
-import * as SecureStore from 'expo-secure-store';
+import * as SecureStore from '../utils/secureStorage';
 
 // Token storage key
 const TOKEN_KEY = '@vaultdocs:token';
