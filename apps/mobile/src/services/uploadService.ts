@@ -83,7 +83,7 @@ class UploadService {
     uri: string,
     title: string,
     category: string,
-    expirationDate: string,
+    expirationDate?: string, // Optional
     extractedData?: Record<string, any>
   ): Promise<UploadDocumentResponse> {
     // Create form data
@@ -102,7 +102,11 @@ class UploadService {
     } as any);
     formData.append('title', title);
     formData.append('category', category);
-    formData.append('expirationDate', expirationDate);
+    
+    // Only append expirationDate if provided
+    if (expirationDate) {
+      formData.append('expirationDate', expirationDate);
+    }
     
     if (extractedData) {
       formData.append('extractedData', JSON.stringify(extractedData));

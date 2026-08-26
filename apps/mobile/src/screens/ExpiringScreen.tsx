@@ -21,12 +21,22 @@ import { documentService, Document } from '../services/documentService';
 /**
  * Get expiration status based on days until expiration
  */
-function getExpirationStatus(expirationDate: string): {
+function getExpirationStatus(expirationDate: string | undefined): {
   label: string;
   color: string;
   bgColor: string;
   daysLeft: number;
 } {
+  // Handle optional expirationDate
+  if (!expirationDate) {
+    return {
+      label: 'Sem vencimento',
+      color: '#6B7280',
+      bgColor: '#F3F4F6',
+      daysLeft: Infinity,
+    };
+  }
+  
   const now = new Date();
   const expDate = new Date(expirationDate);
   const diffTime = expDate.getTime() - now.getTime();
@@ -112,24 +122,34 @@ export function ExpiringScreen() {
   }, [loadExpiringDocuments]);
 
   /**
-   * Sort documents by expiration date (closest first)
+   * Sort documents by expiration date (closest first, no expiration last)
    */
   const sortedDocuments = [...documents].sort((a, b) => {
+    // Documents without expiration go to the end
+    if (!a.expirationDate && !b.expirationDate) return 0;
+    if (!a.expirationDate) return 1;
+    if (!b.expirationDate) return -1;
     return new Date(a.expirationDate).getTime() - new Date(b.expirationDate).getTime();
   });
 
   /**
    * Group documents by expiration status
    */
-  const expiredDocs = sortedDocuments.filter(d => getExpirationStatus(d.expirationDate).daysLeft < 0);
+  const expiredDocs = sortedDocuments.filter(d => {
+    if (!d.expirationDate) return false;
+    return getExpirationStatus(d.expirationDate).daysLeft < 0;
+  });
   const expiringSoonDocs = sortedDocuments.filter(d => {
+    if (!d.expirationDate) return false;
     const status = getExpirationStatus(d.expirationDate);
     return status.daysLeft >= 0 && status.daysLeft <= 7;
   });
   const upcomingDocs = sortedDocuments.filter(d => {
+    if (!d.expirationDate) return false;
     const status = getExpirationStatus(d.expirationDate);
     return status.daysLeft > 7;
   });
+  const noExpirationDocs = sortedDocuments.filter(d => !d.expirationDate);
 
   const filters = [
     { label: '7 dias', value: 7 },

@@ -8,7 +8,11 @@ import { View, Text, StyleSheet, ViewStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, borderRadius, typography } from '../styles/theme';
 
-type CategoryType = 'cnh' | 'rg' | 'boleto' | 'contrato' | 'garantia' | 'outros';
+type CategoryType = 
+  | 'cnh' | 'rg' | 'boleto' | 'contrato' | 'garantia'
+  | 'contas_fixas' | 'despesas_rotativas' | 'documentos_pessoais'
+  | 'contratos' | 'comprovantes' | 'garantias' | 'impostos'
+  | 'outros';
 
 interface CategoryBadgeProps {
   category: CategoryType;
@@ -22,11 +26,20 @@ const categoryConfig: Record<CategoryType, {
   icon: keyof typeof Ionicons.glyphMap;
   color: string;
 }> = {
+  // Legacy categories
   cnh: { label: 'CNH', icon: 'car-outline', color: '#3B82F6' },
   rg: { label: 'RG', icon: 'card-outline', color: '#8B5CF6' },
   boleto: { label: 'Boleto', icon: 'receipt-outline', color: '#F59E0B' },
   contrato: { label: 'Contrato', icon: 'document-text-outline', color: '#10B981' },
   garantia: { label: 'Garantia', icon: 'shield-checkmark-outline', color: '#EC4899' },
+  // New Vault categories
+  contas_fixas: { label: 'Contas Fixas', icon: 'repeat-outline', color: '#2563EB' },
+  despesas_rotativas: { label: 'Despesas Rotativas', icon: 'swap-horizontal-outline', color: '#8B5CF6' },
+  documentos_pessoais: { label: 'Documentos Pessoais', icon: 'person-outline', color: '#10B981' },
+  contratos: { label: 'Contratos', icon: 'document-text-outline', color: '#059669' },
+  comprovantes: { label: 'Comprovantes', icon: 'receipt-outline', color: '#D97706' },
+  garantias: { label: 'Garantias', icon: 'shield-checkmark-outline', color: '#DC2626' },
+  impostos: { label: 'Impostos', icon: 'calculator-outline', color: '#7C3AED' },
   outros: { label: 'Outros', icon: 'folder-outline', color: '#6B7280' },
 };
 

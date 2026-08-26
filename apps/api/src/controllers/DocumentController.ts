@@ -18,15 +18,15 @@ export class DocumentController {
     const { title, category, file, expirationDate, extractedData, notifications } = req.body;
 
     // Validate required fields
-    if (!title || !category || !file || !expirationDate) {
-      throw new AppError('Missing required fields: title, category, file, expirationDate', 400);
+    if (!title || !category || !file) {
+      throw new AppError('Missing required fields: title, category, file', 400);
     }
 
     const dto: CreateDocumentDTO = {
       title,
       category: category as DocumentCategory,
       file,
-      expirationDate: new Date(expirationDate),
+      expirationDate: expirationDate ? new Date(expirationDate) : undefined,
       extractedData,
       notifications,
     };

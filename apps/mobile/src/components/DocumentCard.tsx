@@ -11,14 +11,24 @@ import { StatusBadge } from './StatusBadge';
 import { CategoryBadge, getCategoryConfig } from './CategoryBadge';
 
 type StatusType = 'active' | 'expiring' | 'expired' | 'archived';
-type CategoryType = 'cnh' | 'rg' | 'boleto' | 'contrato' | 'garantia' | 'outros';
+type CategoryType = 
+  | 'cnh' | 'rg' | 'boleto' | 'contrato' | 'garantia'
+  | 'contas_fixas' | 'despesas_rotativas' | 'documentos_pessoais'
+  | 'contratos' | 'comprovantes' | 'garantias' | 'impostos'
+  | 'outros';
 
 interface Document {
   id: string;
   title: string;
   category: CategoryType;
-  expirationDate: string;
+  expirationDate?: string; // Optional
   status: StatusType;
+  file?: {
+    mimeType: string;
+    sizeBytes: number;
+    originalName: string;
+  };
+  createdAt?: string;
 }
 
 interface DocumentCardProps {
@@ -47,7 +57,23 @@ export function DocumentCard({ document, onPress, style }: DocumentCardProps) {
     return diffDays;
   };
 
-  const daysLeft = getDaysUntilExpiration(document.expirationDate);
+  const daysLeft = document.expirationDate ? getDaysUntilExpiration(document.expirationDate) : null;
+  
+  // Format file size
+  const formatFileSize = (bytes: number): string => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+  };
+
+  // Get file type label
+  const getFileTypeLabel = (mimeType: string): string => {
+    if (mimeType.includes('pdf')) return 'PDF';
+    if (mimeType.includes('image')) return 'Imagem';
+    return 'Arquivo';
+  };
   
   return (
     <TouchableOpacity
@@ -79,20 +105,35 @@ export function DocumentCard({ document, onPress, style }: DocumentCardProps) {
         <View style={styles.metaRow}>
           <CategoryBadge category={document.category} size="sm" />
           
-          <View style={styles.expirationContainer}>
-            <Ionicons 
-              name="time-outline" 
-              size={12} 
-              color={daysLeft <= 7 ? colors.status.expiring.text : colors.text.tertiary}
-            />
-            <Text style={[
-              styles.expirationText,
-              daysLeft <= 7 && styles.expirationWarning,
-            ]}>
-              {daysLeft > 0 ? `${daysLeft} dias` : 'Vencido'}
+          {daysLeft !== null ? (
+            <View style={styles.expirationContainer}>
+              <Ionicons 
+                name="time-outline" 
+                size={12} 
+                color={daysLeft <= 7 ? colors.status.expiring.text : colors.text.tertiary}
+              />
+              <Text style={[
+                styles.expirationText,
+                daysLeft <= 7 && styles.expirationWarning,
+              ]}>
+                {daysLeft > 0 ? `${daysLeft} dias` : 'Vencido'}
+              </Text>
+            </View>
+          ) : document.createdAt ? (
+            <Text style={styles.expirationText}>
+              {formatDate(document.createdAt)}
+            </Text>
+          ) : null}
+        </View>
+
+        {/* File Info */}
+        {document.file && (
+          <View style={styles.fileInfoRow}>
+            <Text style={styles.fileInfoText}>
+              {getFileTypeLabel(document.file.mimeType)} • {formatFileSize(document.file.sizeBytes)}
             </Text>
           </View>
-        </View>
+        )}
       </View>
 
       {/* Arrow */}
@@ -156,6 +197,13 @@ const styles = StyleSheet.create({
   expirationWarning: {
     color: colors.status.expiring.text,
     fontWeight: typography.fontWeight.medium,
+  },
+  fileInfoRow: {
+    marginTop: spacing.sm,
+  },
+  fileInfoText: {
+    fontSize: typography.fontSize.xs,
+    color: colors.text.tertiary,
   },
 });
 

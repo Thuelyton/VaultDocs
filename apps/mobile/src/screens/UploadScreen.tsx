@@ -47,11 +47,13 @@ export function UploadScreen() {
   const [uploadProgress, setUploadProgress] = useState(0);
 
   const categories: { value: DocumentCategory; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
-    { value: 'cnh', label: 'CNH', icon: 'car-outline' },
-    { value: 'rg', label: 'RG', icon: 'card-outline' },
-    { value: 'boleto', label: 'Boleto', icon: 'receipt-outline' },
-    { value: 'contrato', label: 'Contrato', icon: 'document-text-outline' },
-    { value: 'garantia', label: 'Garantia', icon: 'shield-checkmark-outline' },
+    { value: 'contas_fixas', label: 'Contas Fixas', icon: 'repeat-outline' },
+    { value: 'despesas_rotativas', label: 'Despesas Rotativas', icon: 'swap-horizontal-outline' },
+    { value: 'documentos_pessoais', label: 'Docs Pessoais', icon: 'person-outline' },
+    { value: 'contratos', label: 'Contratos', icon: 'document-text-outline' },
+    { value: 'comprovantes', label: 'Comprovantes', icon: 'receipt-outline' },
+    { value: 'garantias', label: 'Garantias', icon: 'shield-checkmark-outline' },
+    { value: 'impostos', label: 'Impostos', icon: 'calculator-outline' },
     { value: 'outros', label: 'Outros', icon: 'folder-outline' },
   ];
 
@@ -159,15 +161,14 @@ export function UploadScreen() {
       Alert.alert('Erro', 'Informe um título para o documento.');
       return false;
     }
-    if (!expirationDate.trim()) {
-      Alert.alert('Erro', 'Informe a data de vencimento.');
-      return false;
-    }
-    // Validate date format (DD/MM/YYYY)
-    const dateRegex = /^\d{2}\/\d{2}\/\d{4}$/;
-    if (!dateRegex.test(expirationDate)) {
-      Alert.alert('Erro', 'Formato de data inválido. Use DD/MM/AAAA.');
-      return false;
+    // Expiration date is optional - only validate if provided
+    if (expirationDate.trim()) {
+      // Validate date format (DD/MM/YYYY)
+      const dateRegex = /^\d{2}\/\d{2}\/\d{4}$/;
+      if (!dateRegex.test(expirationDate)) {
+        Alert.alert('Erro', 'Formato de data inválido. Use DD/MM/AAAA.');
+        return false;
+      }
     }
     return true;
   };
@@ -182,9 +183,12 @@ export function UploadScreen() {
     setError(null);
 
     try {
-      // Convert date from DD/MM/YYYY to ISO format
-      const [day, month, year] = expirationDate.split('/');
-      const isoDate = `${year}-${month}-${day}T00:00:00.000Z`;
+      // Convert date from DD/MM/YYYY to ISO format (only if provided)
+      let isoDate: string | undefined;
+      if (expirationDate.trim()) {
+        const [day, month, year] = expirationDate.split('/');
+        isoDate = `${year}-${month}-${day}T00:00:00.000Z`;
+      }
 
       // Upload and create document
       const response = await uploadService.uploadAndCreateDocument(
@@ -381,7 +385,7 @@ export function UploadScreen() {
               </View>
 
               <Input
-                label="Data de vencimento"
+                label="Data de vencimento (opcional)"
                 placeholder="DD/MM/AAAA"
                 value={expirationDate}
                 onChangeText={setExpirationDate}

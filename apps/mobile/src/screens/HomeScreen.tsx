@@ -227,8 +227,10 @@ export function HomeScreen() {
                   category: doc.category,
                   expirationDate: doc.expirationDate,
                   status: doc.status === 'active' ? 
-                    (new Date(doc.expirationDate) > new Date() ? 'active' : 'expired') : 
+                    (doc.expirationDate && new Date(doc.expirationDate) < new Date() ? 'expired' : 'active') : 
                     doc.status as any,
+                  file: doc.file,
+                  createdAt: doc.createdAt,
                 }}
                 onPress={(id) => console.log('Document pressed:', id)}
               />

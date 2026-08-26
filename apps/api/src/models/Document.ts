@@ -2,8 +2,31 @@ import mongoose, { Schema, Document as MongooseDocument } from 'mongoose';
 
 /**
  * Document Categories
+ * 
+ * Legacy categories (for AI/OCR compatibility):
+ * - cnh, rg, boleto, contrato, garantia, outros
+ * 
+ * New categories (Vault/Document Manager):
+ * - contas_fixas, despesas_rotativas, documentos_pessoais,
+ *   contratos, comprovantes, garantias, impostos, outros
  */
-export type DocumentCategory = 'cnh' | 'rg' | 'boleto' | 'contrato' | 'garantia' | 'outros';
+export type DocumentCategory = 
+  // Legacy categories (preserved for AI/OCR)
+  | 'cnh' 
+  | 'rg' 
+  | 'boleto' 
+  | 'contrato' 
+  | 'garantia' 
+  // New Vault categories
+  | 'contas_fixas' 
+  | 'despesas_rotativas' 
+  | 'documentos_pessoais' 
+  | 'contratos' 
+  | 'comprovantes' 
+  | 'garantias' 
+  | 'impostos' 
+  // Default
+  | 'outros';
 
 /**
  * Document Status
@@ -292,7 +315,9 @@ const DocumentSchema = new Schema<IDocument>(
     category: {
       type: String,
       required: true,
-      enum: ['cnh', 'rg', 'boleto', 'contrato', 'garantia', 'outros'],
+      enum: ['cnh', 'rg', 'boleto', 'contrato', 'garantia', 
+             'contas_fixas', 'despesas_rotativas', 'documentos_pessoais',
+             'contratos', 'comprovantes', 'garantias', 'impostos', 'outros'],
       default: 'outros',
     },
     file: {
@@ -309,7 +334,7 @@ const DocumentSchema = new Schema<IDocument>(
     },
     expirationDate: {
       type: Date,
-      required: true,
+      required: false, // Optional - not all documents have expiration
       index: true,
     },
     notifications: {

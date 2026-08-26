@@ -7,8 +7,28 @@ import apiClient from '../api/client';
 
 /**
  * Document Category
+ * 
+ * Legacy categories (for AI/OCR):
+ * - cnh, rg, boleto, contrato, garantia, outros
+ * 
+ * New Vault categories:
+ * - contas_fixas, despesas_rotativas, documentos_pessoais,
+ *   contratos, comprovantes, garantias, impostos, outros
  */
-export type DocumentCategory = 'cnh' | 'rg' | 'boleto' | 'contrato' | 'garantia' | 'outros';
+export type DocumentCategory = 
+  | 'cnh' 
+  | 'rg' 
+  | 'boleto' 
+  | 'contrato' 
+  | 'garantia' 
+  | 'contas_fixas' 
+  | 'despesas_rotativas' 
+  | 'documentos_pessoais' 
+  | 'contratos' 
+  | 'comprovantes' 
+  | 'garantias' 
+  | 'impostos' 
+  | 'outros';
 
 /**
  * Document Status
@@ -35,7 +55,7 @@ export interface Document {
   category: DocumentCategory;
   file: FileData;
   extractedData: ExtractedDocumentData | Record<string, any>;
-  expirationDate: string;
+  expirationDate?: string; // Optional
   notifications: Array<{
     daysBefore: number;
     sent: boolean;

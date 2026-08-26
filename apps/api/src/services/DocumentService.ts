@@ -14,7 +14,7 @@ export interface CreateDocumentDTO {
     sizeBytes: number;
     originalName: string;
   };
-  expirationDate: Date;
+  expirationDate?: Date; // Optional - not all documents have expiration
   extractedData?: Record<string, any>;
   notifications?: { daysBefore: number }[];
 }
@@ -52,8 +52,8 @@ export class DocumentService {
    * Create a new document
    */
   async createDocument(userId: string, data: CreateDocumentDTO): Promise<IDocument> {
-    // Validate expiration date is in the future
-    if (new Date(data.expirationDate) < new Date()) {
+    // Validate expiration date is in the future (only if provided)
+    if (data.expirationDate && new Date(data.expirationDate) < new Date()) {
       throw new AppError('Expiration date must be in the future', 400);
     }
 

@@ -108,6 +108,9 @@ export function DocumentDetailScreen({ route, navigation }: DocumentDetailScreen
     
     if (document.status === 'archived') return 'archived';
     
+    // Handle optional expirationDate
+    if (!document.expirationDate) return 'active';
+    
     const now = new Date();
     const expDate = new Date(document.expirationDate);
     
@@ -122,7 +125,8 @@ export function DocumentDetailScreen({ route, navigation }: DocumentDetailScreen
   /**
    * Format date
    */
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString: string | undefined) => {
+    if (!dateString) return '-';
     return new Date(dateString).toLocaleDateString('pt-BR', {
       day: '2-digit',
       month: 'long',

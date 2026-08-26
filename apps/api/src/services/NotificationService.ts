@@ -44,6 +44,14 @@ export class NotificationService {
    * @returns Documents with status info
    */
   static getExpiringInfo(document: IDocument) {
+    // Handle optional expirationDate
+    if (!document.expirationDate) {
+      return {
+        status: 'active' as ExpirationStatus,
+        daysToExpiration: null,
+      };
+    }
+    
     const status = this.calculateExpirationStatus(document.expirationDate);
     
     const now = new Date();
