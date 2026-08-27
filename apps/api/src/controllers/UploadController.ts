@@ -52,19 +52,19 @@ export class UploadController {
       throw new AppError('No file provided. Use field name: file', 400);
     }
 
-    // Validate required fields
-    if (!title || !category || !expirationDate) {
-      throw new AppError('Missing required fields: title, category, expirationDate', 400);
+    // Validate required fields (expirationDate is optional)
+    if (!title || !category) {
+      throw new AppError('Missing required fields: title, category', 400);
     }
 
     // Upload to R2
     const uploadResult = await storageService.uploadFile(file);
 
-    // Create document
+    // Create document (expirationDate is optional)
     const document = await documentService.createDocument(userId, {
       title,
       category: category as DocumentCategory,
-      expirationDate: new Date(expirationDate),
+      expirationDate: expirationDate ? new Date(expirationDate) : undefined,
       extractedData: extractedData ? JSON.parse(extractedData) : {},
       file: {
         storageKey: uploadResult.storageKey,

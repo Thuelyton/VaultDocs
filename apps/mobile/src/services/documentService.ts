@@ -319,6 +319,16 @@ class DocumentService {
     );
     return response.data.data || [];
   }
+
+  /**
+   * Get view URL for a document (presigned URL)
+   */
+  async getViewUrl(id: string): Promise<{ viewUrl: string; mimeType: string; originalName: string }> {
+    const response = await apiClient.get<{ status: string; data: { viewUrl: string; mimeType: string; originalName: string } }>(
+      `/documents/${id}/view-url`
+    );
+    return response.data.data;
+  }
 }
 
 // Export singleton instance

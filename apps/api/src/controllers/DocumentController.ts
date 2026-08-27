@@ -3,6 +3,7 @@ import { AuthenticatedRequest } from '../middlewares/authenticate';
 import { documentService, CreateDocumentDTO, UpdateDocumentDTO } from '../services/DocumentService';
 import { DocumentCategory, DocumentStatus } from '../models/Document';
 import { AppError } from '../middlewares/errorHandler';
+import { storageService } from '../services/StorageService';
 
 /**
  * Document Controller
@@ -148,6 +149,33 @@ export class DocumentController {
       status: 'success',
       count: documents.length,
       data: documents,
+    });
+  }
+
+  /**
+   * GET /api/v1/documents/:id/view-url
+   * Get a presigned URL for viewing the document
+   */
+  async getViewUrl(req: AuthenticatedRequest, res: Response): Promise<void> {
+    const userId = req.userId!;
+    const { id } = req.params;
+
+    const document = await documentService.getDocumentById(id, userId);
+
+    if (!document.file?.storageKey) {
+      throw new AppError('Document file not found', 404);
+    }
+
+    // Generate presigned URL (expires in 15 minutes)
+    const viewUrl = await storageService.getPresignedUrl(document.file.storageKey, 900);
+
+    res.status(200).json({
+      status: 'success',
+      data: {
+        viewUrl,
+        mimeType: document.file.mimeType,
+        originalName: document.file.originalName,
+      },
     });
   }
 }

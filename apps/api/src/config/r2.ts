@@ -17,8 +17,12 @@ const R2_ACCOUNT_ID = process.env.R2_ACCOUNT_ID;
 const R2_ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID;
 const R2_SECRET_ACCESS_KEY = process.env.R2_SECRET_ACCESS_KEY;
 
+console.log('🔍 R2 Config - Account ID:', R2_ACCOUNT_ID ? 'SET' : 'NOT SET');
+
 if (!R2_ACCOUNT_ID || !R2_ACCESS_KEY_ID || !R2_SECRET_ACCESS_KEY) {
   console.warn('⚠️ R2 credentials not configured. File uploads will fail.');
+} else {
+  console.log('✅ R2 credentials configured successfully');
 }
 
 /**

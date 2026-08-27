@@ -1,5 +1,6 @@
 import { DocumentModel, IDocument, DocumentCategory, DocumentStatus } from '../models/Document';
 import { AppError } from '../middlewares/errorHandler';
+import { storageService } from './StorageService';
 import mongoose from 'mongoose';
 
 /**
@@ -168,21 +169,32 @@ export class DocumentService {
   }
 
   /**
-   * Delete a document (soft delete by archiving)
+   * Delete a document permanently (removes from R2 and MongoDB)
    */
   async deleteDocument(documentId: string, userId: string): Promise<void> {
-    const document = await DocumentModel.findOneAndUpdate(
-      {
-        _id: new mongoose.Types.ObjectId(documentId),
-        userId: new mongoose.Types.ObjectId(userId),
-      },
-      { $set: { status: 'archived' } },
-      { new: true }
-    );
+    // First, find the document to get the storageKey
+    const document = await DocumentModel.findOne({
+      _id: new mongoose.Types.ObjectId(documentId),
+      userId: new mongoose.Types.ObjectId(userId),
+    });
 
     if (!document) {
       throw new AppError('Document not found', 404);
     }
+
+    // Delete file from R2 (if storageKey exists)
+    if (document.file?.storageKey) {
+      try {
+        await storageService.deleteFile(document.file.storageKey);
+      } catch (error) {
+        console.error('Failed to delete file from R2:', error);
+        // Continue with MongoDB deletion even if R2 fails
+        // Log the error but don't block the operation
+      }
+    }
+
+    // Delete document from MongoDB
+    await DocumentModel.findByIdAndDelete(document._id);
   }
 
   /**

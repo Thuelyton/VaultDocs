@@ -1,7 +1,8 @@
+// Load environment variables FIRST
+// When running via `node dist/server.js`, this require() runs before any imports.
+// When running via `tsx`, the preload.cjs --require flag handles this.
 import dotenv from 'dotenv';
 import path from 'path';
-
-// Load environment variables FIRST before any other imports
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 // Now import the rest of the application

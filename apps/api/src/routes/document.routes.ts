@@ -38,6 +38,13 @@ router.get('/stats', documentController.getStats.bind(documentController));
 router.get('/expiring', documentController.getExpiring.bind(documentController));
 
 /**
+ * @route   GET /api/v1/documents/:id/view-url
+ * @desc    Get a presigned URL for viewing the document
+ * @access  Private
+ */
+router.get('/:id/view-url', documentController.getViewUrl.bind(documentController));
+
+/**
  * @route   GET /api/v1/documents/:id
  * @desc    Get a single document by ID
  * @access  Private

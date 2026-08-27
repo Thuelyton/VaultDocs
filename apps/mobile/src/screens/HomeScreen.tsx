@@ -171,24 +171,54 @@ export function HomeScreen() {
           </View>
         )}
 
-        {/* Expiring Alert */}
+        {/* Seus compromissos */}
         {expiringDocs.length > 0 && (
           <View style={styles.alertContainer}>
             <View style={styles.alertHeader}>
               <Ionicons name="time" size={20} color={colors.status.expiring.text} />
-              <Text style={styles.alertTitle}>Vencendo em breve</Text>
+              <Text style={styles.alertTitle}>Seus compromissos</Text>
             </View>
-            {expiringDocs.slice(0, 3).map(doc => (
-              <View key={doc._id} style={styles.alertItem}>
-                <Text style={styles.alertItemTitle} numberOfLines={1}>
-                  {doc.title}
-                </Text>
-                <StatusBadge status="expiring" size="sm" />
-              </View>
-            ))}
-            {expiringDocs.length > 3 && (
-              <TouchableOpacity style={styles.alertAction}>
-                <Text style={styles.alertActionText}>Ver todos</Text>
+            {expiringDocs.slice(0, 5).map(doc => {
+              const daysLeft = doc.expirationDate 
+                ? Math.ceil((new Date(doc.expirationDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
+                : null;
+              let urgency = 'future';
+              if (daysLeft !== null) {
+                if (daysLeft < 0) urgency = 'expired';
+                else if (daysLeft === 0) urgency = 'today';
+                else if (daysLeft === 1) urgency = 'tomorrow';
+                else if (daysLeft <= 7) urgency = 'week';
+              }
+              return (
+                <View key={doc._id} style={styles.alertItem}>
+                  <View style={[styles.urgencyDot, { backgroundColor: 
+                    urgency === 'expired' ? '#DC2626' : 
+                    urgency === 'today' ? '#DC2626' :
+                    urgency === 'tomorrow' ? '#F59E0B' :
+                    urgency === 'week' ? '#F59E0B' : '#10B981'
+                  }]} />
+                  <View style={styles.alertItemContent}>
+                    <Text style={styles.alertItemTitle} numberOfLines={1}>
+                      {doc.title}
+                    </Text>
+                    <Text style={styles.alertItemSubtitle}>
+                      {daysLeft !== null ? (
+                        daysLeft < 0 ? 'Vencido' :
+                        daysLeft === 0 ? 'Vence hoje' :
+                        daysLeft === 1 ? 'Vence amanhã' :
+                        `Vence em ${daysLeft} dias`
+                      ) : 'Sem vencimento'}
+                    </Text>
+                  </View>
+                </View>
+              );
+            })}
+            {expiringDocs.length > 5 && (
+              <TouchableOpacity 
+                style={styles.alertAction}
+                onPress={() => navigation.navigate('Expiring' as never)}
+              >
+                <Text style={styles.alertActionText}>Ver todos os vencimentos</Text>
                 <Ionicons name="arrow-forward" size={16} color={colors.primary.DEFAULT} />
               </TouchableOpacity>
             )}
@@ -350,18 +380,30 @@ const styles = StyleSheet.create({
   },
   alertItem: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     backgroundColor: colors.white,
     borderRadius: borderRadius.md,
     padding: spacing.sm + 2,
     marginBottom: spacing.sm,
   },
-  alertItemTitle: {
+  urgencyDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: spacing.sm,
+  },
+  alertItemContent: {
     flex: 1,
+  },
+  alertItemTitle: {
     fontSize: typography.fontSize.sm,
     color: colors.text.primary,
-    marginRight: spacing.sm,
+    fontWeight: typography.fontWeight.medium,
+  },
+  alertItemSubtitle: {
+    fontSize: typography.fontSize.xs,
+    color: colors.text.secondary,
+    marginTop: 2,
   },
   alertAction: {
     flexDirection: 'row',

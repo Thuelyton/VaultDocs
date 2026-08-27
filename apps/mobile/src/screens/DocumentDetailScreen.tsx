@@ -89,15 +89,23 @@ export function DocumentDetailScreen({ route, navigation }: DocumentDetailScreen
    * Handle open file
    */
   const handleOpenFile = async () => {
-    if (!document?.file?.storageKey) return;
+    if (!document?._id) return;
     
-    // For now, just show the storage key
-    // In production, this would generate a presigned URL
-    Alert.alert(
-      'Arquivo',
-      `Storage Key: ${document.file.storageKey}`,
-      [{ text: 'OK' }]
-    );
+    try {
+      const { viewUrl, mimeType } = await documentService.getViewUrl(document._id);
+      
+      // Open URL in browser or show in-app
+      if (mimeType === 'application/pdf') {
+        // For PDFs, open in browser
+        await Linking.openURL(viewUrl);
+      } else {
+        // For images, also open in browser (could use in-app viewer)
+        await Linking.openURL(viewUrl);
+      }
+    } catch (err: any) {
+      console.error('Error getting view URL:', err);
+      Alert.alert('Erro', 'Não foi possível abrir o arquivo');
+    }
   };
 
   /**
@@ -195,18 +203,14 @@ export function DocumentDetailScreen({ route, navigation }: DocumentDetailScreen
             onPress={handleOpenFile}
             activeOpacity={0.8}
           >
-            {isImage(document.file?.mimeType) ? (
-              <Image 
-                source={{ uri: document.file?.storageKey }} 
-                style={styles.previewImage}
-                resizeMode="cover"
+            <View style={styles.previewPlaceholder}>
+              <Ionicons 
+                name={isImage(document.file?.mimeType) ? 'image' : 'document-text'} 
+                size={64} 
+                color={colors.primary.DEFAULT} 
               />
-            ) : (
-              <View style={styles.previewPlaceholder}>
-                <Ionicons name="document-text" size={64} color={colors.primary.DEFAULT} />
-                <Text style={styles.previewText}>Visualizar arquivo</Text>
-              </View>
-            )}
+              <Text style={styles.previewText}>Visualizar arquivo</Text>
+            </View>
             <View style={styles.previewOverlay}>
               <Ionicons name="eye" size={24} color={colors.white} />
             </View>

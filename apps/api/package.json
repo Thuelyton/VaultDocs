@@ -4,7 +4,7 @@
   "description": "API Backend for VaultDocs - Document Management System",
   "main": "dist/server.js",
   "scripts": {
-    "dev": "tsx watch src/server.ts",
+    "dev": "tsx --require ./preload.cjs watch src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
     "lint": "eslint src/**/*.ts",
