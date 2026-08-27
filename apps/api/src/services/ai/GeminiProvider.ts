@@ -23,65 +23,17 @@ const GEMINI_CONFIG = {
 /**
  * System prompt for document extraction
  */
-const EXTRACTION_PROMPT = `You are a document data extraction specialist for Brazilian documents.
+const EXTRACTION_PROMPT = `Extract data from this Brazilian document OCR text. Return ONLY valid JSON.
 
-Analyze the OCR text provided and extract structured information.
+Document types: RG, CNH, CPF, CONTRATO, BOLETO, GARANTIA, NOTA_FISCAL, SEGURO, PASSAPORTE, OUTROS
 
-Supported document types:
-- RG (Registro Geral - Brazilian ID)
-- CNH (Carteira Nacional de Habilitação - Driver's License)
-- CPF (Cadastro de Pessoas Físicas - Tax ID)
-- CONTRATO (Contract)
-- BOLETO (Payment slip)
-- GARANTIA (Warranty)
-- NOTA_FISCAL (Invoice)
-- SEGURO (Insurance)
-- PASSAPORTE (Passport)
-- TITULO_ELEITOR (Voter Registration)
-- CERTIDAO (Certificate)
-- OUTROS (Others)
+JSON format:
+{"documentType":"string","person":{"name":"string|null","cpf":"string|null"},"address":{"street":"string|null","city":"string|null","state":"string|null"},"expirationDate":"string|null","amount":"number|null","confidence":"number 0-1"}
 
-Extract the following information in JSON format:
-{
-  "documentType": "string",
-  "documentNumber": "string or null",
-  "person": {
-    "name": "string or null",
-    "cpf": "string or null",
-    "rg": "string or null",
-    "birthDate": "string or null",
-    "gender": "string or null",
-    "nationality": "string or null",
-    "motherName": "string or null",
-    "fatherName": "string or null"
-  },
-  "address": {
-    "street": "string or null",
-    "number": "string or null",
-    "complement": "string or null",
-    "neighborhood": "string or null",
-    "city": "string or null",
-    "state": "string or null",
-    "zipCode": "string or null"
-  },
-  "issueDate": "string or null",
-  "expirationDate": "string or null",
-  "issuer": "string or null",
-  "department": "string or null",
-  "amount": "number or null",
-  "dueDate": "string or null",
-  "barcode": "string or null",
-  "confidence": "number between 0 and 1"
-}
-
-IMPORTANT RULES:
-1. Only extract information that is clearly present in the text
-2. Do NOT guess or assume information
-3. If information is not available, use null
-4. Return valid JSON only
-5. For dates, use ISO format (YYYY-MM-DD) when possible
-6. For CPF, format as XXX.XXX.XXX-XX
-7. Calculate confidence based on text quality and completeness`;
+Rules:
+- Only extract what is clearly in the text
+- Use null for missing info
+- Return ONLY the JSON, no extra text`;
 
 /**
  * Google Gemini AI Provider Implementation
@@ -128,7 +80,7 @@ export class GeminiProvider implements AIProvider {
 
     try {
       const userMessage = documentHint 
-        ? `${EXTRACTION_PROMPT}\n\nDocument type hint: ${documentHint}\n\nOCR Text:\n${ocrText}`
+        ? `Document type: ${documentHint}\n\n${EXTRACTION_PROMPT}\n\nOCR Text:\n${ocrText}`
         : `${EXTRACTION_PROMPT}\n\nOCR Text:\n${ocrText}`;
 
       const result = await this.model!.generateContent(userMessage);

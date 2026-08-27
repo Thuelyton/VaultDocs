@@ -54,38 +54,29 @@ export class TesseractOCRProvider implements OCRProvider {
    * Extract text from PDF
    */
   async extractTextFromPDF(pdfBuffer: Buffer): Promise<OCRResult> {
+    // Step 1: Try pdf-parse for text-based PDFs
     try {
-      // Step 1: Try pdf-parse for text-based PDFs
       const pdfData = await pdfParse(pdfBuffer);
       const extractedText = pdfData.text?.trim();
 
       if (extractedText && extractedText.length > 10) {
-        // Text-based PDF — no OCR needed
         return {
           text: extractedText,
           confidence: 0.95,
           language: this.languages,
         };
       }
-
-      // Step 2: Scanned/image PDF — no text found, try Tesseract
-      console.warn('No text found in PDF via pdf-parse, falling back to Tesseract');
-      
-      const result = await Tesseract.recognize(
-        pdfBuffer,
-        this.languages,
-        {}
-      );
-
-      return {
-        text: result.data.text,
-        confidence: result.data.confidence / 100,
-        language: this.languages,
-      };
-    } catch (error: any) {
-      console.error('PDF OCR Error:', error);
-      throw new Error(`PDF OCR processing failed: ${error.message}`);
+    } catch (pdfError: any) {
+      console.warn('pdf-parse failed:', pdfError.message);
     }
+
+    // Step 2: If pdf-parse fails or finds no text, the PDF is likely
+    // scanned/image-based. Tesseract cannot read PDFs directly.
+    // Throw an error with a clear message.
+    throw new Error(
+      'PDF does not contain extractable text. '
+      + 'Please convert the PDF to an image (PNG/JPG) and upload that instead.'
+    );
   }
 
   /**

@@ -62,8 +62,10 @@ export class ProcessingController {
       },
     });
 
-    // Process in background
-    this.processDocumentInBackground(id, document);
+    // Process in background (catch unhandled rejections)
+    this.processDocumentInBackground(id, document).catch((err) => {
+      console.error('Unhandled background processing error:', err);
+    });
   }
 
   /**
