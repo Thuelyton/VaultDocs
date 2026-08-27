@@ -6,6 +6,7 @@
 
 import Tesseract from 'tesseract.js';
 import sharp from 'sharp';
+const pdfParse = require('pdf-parse');
 import { OCRProvider, OCRResult } from './OCRProvider';
 
 /**
@@ -54,12 +55,22 @@ export class TesseractOCRProvider implements OCRProvider {
    */
   async extractTextFromPDF(pdfBuffer: Buffer): Promise<OCRResult> {
     try {
-      // Convert PDF to images and process each page
-      // For simplicity, we'll process the first page
-      // In production, use pdf-to-image or similar library
+      // Step 1: Try pdf-parse for text-based PDFs
+      const pdfData = await pdfParse(pdfBuffer);
+      const extractedText = pdfData.text?.trim();
+
+      if (extractedText && extractedText.length > 10) {
+        // Text-based PDF — no OCR needed
+        return {
+          text: extractedText,
+          confidence: 0.95,
+          language: this.languages,
+        };
+      }
+
+      // Step 2: Scanned/image PDF — no text found, try Tesseract
+      console.warn('No text found in PDF via pdf-parse, falling back to Tesseract');
       
-      // For now, we'll use a simplified approach
-      // In a real implementation, you'd use pdf2pic or similar
       const result = await Tesseract.recognize(
         pdfBuffer,
         this.languages,
