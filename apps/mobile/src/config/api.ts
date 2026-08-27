@@ -1,27 +1,37 @@
 /**
  * API Configuration
  * 
- * Update BASE_URL according to your environment:
- * - Development: http://10.0.2.2:3000 (Android emulator)
- * - Development: http://localhost:3000 (iOS simulator)
- * - Production: https://api.vaultdocs.app
+ * Environment Variables:
+ * - EXPO_PUBLIC_API_URL: Production API URL (set in .env or hosting)
+ * 
+ * Behavior:
+ * - Development (local): Uses localhost based on platform
+ * - Production: Uses EXPO_PUBLIC_API_URL or falls back to localhost
  */
 
 import { Platform } from 'react-native';
 
 const getBaseUrl = () => {
-  // Para desenvolvimento
+  // Check for explicit environment variable first (production)
+  const envApiUrl = (globalThis as any).__EXPO_PUBLIC_API_URL 
+    || process.env.EXPO_PUBLIC_API_URL;
+  
+  if (envApiUrl) {
+    return `${envApiUrl}/api/v1`;
+  }
+
+  // Development: Use platform-specific localhost
   if (__DEV__) {
-    // Android emulator usa 10.0.2.2 para acessar localhost do host
+    // Android emulator uses 10.0.2.2 to access host localhost
     if (Platform.OS === 'android') {
       return 'http://10.0.2.2:3000/api/v1';
     }
-    // iOS simulator
+    // iOS simulator and Web
     return 'http://localhost:3000/api/v1';
   }
   
-  // Produção
-  return 'https://api.vaultdocs.app/api/v1';
+  // Fallback for production if env var not set
+  return 'http://localhost:3000/api/v1';
 };
 
 export const API_CONFIG = {

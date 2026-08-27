@@ -62,6 +62,11 @@ pnpm-debug.log*
 coverage/
 .nyc_output/
 
+# Test files (temporary)
+*.pdf
+*.png
+*.traineddata
+
 # Misc
 *.tgz
 *.tar.gz

@@ -17,11 +17,20 @@ const app: Application = express();
 // ===========================================
 
 // CORS Configuration
+// In production, CORS_ORIGIN must be set to the exact frontend domain
+// In development, allow localhost for local testing
+const corsOrigin = process.env.CORS_ORIGIN || (
+  process.env.NODE_ENV === 'production'
+    ? '' // Block all origins in production if not configured
+    : 'http://localhost:8081' // Default dev origin for Expo Web
+);
+
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN || '*',
+    origin: corsOrigin ? [corsOrigin] : false,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
     allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true,
   })
 );
 
