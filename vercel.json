@@ -1,0 +1,19 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "cd apps/mobile && npm install --no-audit --no-fund && npx expo export -p web --output-dir dist",
+  "outputDirectory": "apps/mobile/dist",
+  "installCommand": "npm install --no-audit --no-fund",
+  "framework": null,
+  "cleanUrls": true,
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/" }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)\\.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    }
+  ]
+}

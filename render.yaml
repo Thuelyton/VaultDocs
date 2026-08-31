@@ -1,0 +1,46 @@
+# =============================================================
+# Render Blueprint — VaultDocs API
+# Docs: https://render.com/docs/blueprint-spec
+# Use: render.com/dashboard -> New -> Blueprint -> point to repo
+# =============================================================
+services:
+  - type: web
+    name: vaultdocs-api
+    runtime: node
+    plan: free
+    rootDir: apps/api
+    region: oregon
+    branch: main
+    autoDeploy: true
+    buildCommand: npm install --include=dev && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    # Node 20 LTS — supported by Expo/RN packages at root too
+    envVars:
+      - key: NODE_VERSION
+        value: 20.18.0
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      # --- Secrets: sync:false means Render will prompt in the UI
+      # --- and these values are NOT read from git.
+      - key: MONGO_URI
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: R2_ACCOUNT_ID
+        sync: false
+      - key: R2_ACCESS_KEY_ID
+        sync: false
+      - key: R2_SECRET_ACCESS_KEY
+        sync: false
+      - key: R2_BUCKET_NAME
+        value: vaultdocs-storage
+      - key: R2_PUBLIC_URL
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      # Allowed origins — update after Vercel deploy with the real URL
+      - key: CORS_ORIGIN
+        value: https://placeholder.vercel.app

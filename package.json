@@ -7,6 +7,9 @@
     "apps/*"
   ],
   "scripts": {
+    "predev": "npm run kill:port",
+    "predev:api": "npm run kill:port",
+    "predev:mobile": "npm run kill:port",
     "dev": "npm run dev --workspace=apps/api",
     "dev:api": "npm run dev --workspace=apps/api",
     "dev:mobile": "npm run start --workspace=apps/mobile",
@@ -17,7 +20,8 @@
     "start:mobile": "npm run start --workspace=apps/mobile",
     "lint": "npm run lint --workspace=apps/api",
     "typecheck": "npm run typecheck --workspace=apps/api",
-    "install:all": "npm install"
+    "install:all": "npm install",
+    "kill:port": "node scripts/kill-port.js"
   },
   "keywords": [
     "vaultdocs",
