@@ -8,12 +8,11 @@ services:
     name: vaultdocs-api
     runtime: node
     plan: free
-    rootDir: apps/api
     region: oregon
     branch: main
     autoDeploy: true
-    buildCommand: npm install --force && npm run build
-    startCommand: npm start
+    buildCommand: npm install --include=dev && npm run build
+    startCommand: npm run start
     healthCheckPath: /health
     # Node 20 LTS — last version that still supports the legacy AWS SDK v3
     # crypto path used by @aws-sdk/client-s3 + sharp without native rebuilds.
