@@ -17,5 +17,5 @@
     "typeRoots": ["./node_modules/@types", "./src/types"]
   },
   "include": ["src/**/*.ts"],
-  "exclude": ["node_modules", "dist", "src/test-gemini.ts"]
+  "exclude": ["node_modules", "dist", "src/test-gemini.ts", "src/test-upload.ts", "src/test-upload-e2e.ts"]
 }
