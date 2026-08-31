@@ -15,7 +15,8 @@ services:
     buildCommand: npm install --include=dev && npm run build
     startCommand: npm start
     healthCheckPath: /health
-    # Node 20 LTS — supported by Expo/RN packages at root too
+    # Node 20 LTS — last version that still supports the legacy AWS SDK v3
+    # crypto path used by @aws-sdk/client-s3 + sharp without native rebuilds.
     envVars:
       - key: NODE_VERSION
         value: 20.18.0
@@ -23,12 +24,15 @@ services:
         value: production
       - key: PORT
         value: 10000
-      # --- Secrets: sync:false means Render will prompt in the UI
-      # --- and these values are NOT read from git.
+      # --- MongoDB Atlas (sync:false so Render prompts in the UI)
       - key: MONGO_URI
         sync: false
+      # --- JWT
       - key: JWT_SECRET
         sync: false
+      # --- Cloudflare R2
+      # NOTE: bucket name "vaultdocs-api" matches the user's existing bucket.
+      # If you create a new bucket, update this value in Render's UI.
       - key: R2_ACCOUNT_ID
         sync: false
       - key: R2_ACCESS_KEY_ID
@@ -36,11 +40,14 @@ services:
       - key: R2_SECRET_ACCESS_KEY
         sync: false
       - key: R2_BUCKET_NAME
-        value: vaultdocs-storage
+        value: vaultdocs-api
+      # Leave R2_PUBLIC_URL empty in production — we use presigned URLs only.
       - key: R2_PUBLIC_URL
-        sync: false
+        value: ""
+      # --- Gemini AI (optional — uploads work without it)
       - key: GEMINI_API_KEY
         sync: false
-      # Allowed origins — update after Vercel deploy with the real URL
+      # --- CORS: comma-separated allowed origins.
+      # Update after Vercel deploy with the real URL (no trailing slash).
       - key: CORS_ORIGIN
         value: https://placeholder.vercel.app

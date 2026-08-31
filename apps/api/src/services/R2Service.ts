@@ -264,7 +264,9 @@ export class R2Service {
     const amzDate = now.toISOString().replace(/[:-]|\.\d{3}/g, '').replace(/\.\d{3}Z$/, '000000Z');
     const dateStamp = amzDate.substring(0, 8);
 
-    const expires = Math.floor(Date.now() / 1000) + expiresIn;
+    // AWS Sig V4 spec: X-Amz-Expires is the DURATION in seconds
+    // (1..604800), NOT an absolute Unix timestamp.
+    const expires = expiresIn;
 
     const credentialScope = `${dateStamp}/auto/s3/aws4_request`;
     const queryParams = [
