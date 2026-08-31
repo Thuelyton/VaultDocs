@@ -1,6 +1,5 @@
-import { PutObjectCommand, DeleteObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { r2Client, R2_CONFIG } from '../config/r2';
+import { r2Service } from './R2Service';
+import { R2_CONFIG } from '../config/r2';
 import { AppError } from '../middlewares/errorHandler';
 import crypto from 'crypto';
 import path from 'path';
@@ -77,34 +76,21 @@ export class StorageService {
     // Validate file
     this.validateFile(file);
 
-    // Generate unique storage key
-    const storageKey = this.generateStorageKey(file.originalname);
-
-    // Create upload command
-    const command = new PutObjectCommand({
-      Bucket: R2_CONFIG.bucketName,
-      Key: storageKey,
-      Body: file.buffer,
-      ContentType: file.mimetype,
-      ContentLength: file.size,
-      Metadata: {
-        originalName: file.originalname,
-      },
-    });
-
     try {
-      // Upload to R2
-      await r2Client.send(command);
-
-      // Construct public URL
-      const publicUrl = `${R2_CONFIG.publicUrl}/${storageKey}`;
+      // Upload to R2 using the R2Service
+      const result = await r2Service.uploadFile({
+        buffer: file.buffer,
+        originalname: file.originalname,
+        mimetype: file.mimetype,
+        size: file.size,
+      });
 
       return {
-        storageKey,
-        originalName: file.originalname,
-        mimeType: file.mimetype,
-        sizeBytes: file.size,
-        publicUrl,
+        storageKey: result.storageKey,
+        originalName: result.originalName,
+        mimeType: result.mimeType,
+        sizeBytes: result.sizeBytes,
+        publicUrl: result.publicUrl,
       };
     } catch (error) {
       console.error('R2 Upload Error:', error);
@@ -116,13 +102,8 @@ export class StorageService {
    * Delete a file from R2
    */
   async deleteFile(storageKey: string): Promise<void> {
-    const command = new DeleteObjectCommand({
-      Bucket: R2_CONFIG.bucketName,
-      Key: storageKey,
-    });
-
     try {
-      await r2Client.send(command);
+      await r2Service.deleteFile(storageKey);
     } catch (error) {
       console.error('R2 Delete Error:', error);
       throw new AppError('Failed to delete file from storage', 500);
@@ -133,26 +114,17 @@ export class StorageService {
    * Download a file from R2 as Buffer
    */
   async getFileBuffer(storageKey: string): Promise<Buffer> {
-    const { GetObjectCommand } = await import('@aws-sdk/client-s3');
-    
-    const command = new GetObjectCommand({
-      Bucket: R2_CONFIG.bucketName,
-      Key: storageKey,
-    });
-
     try {
-      const response = await r2Client.send(command);
+      // For now, we'll use presigned URL to download
+      const url = await r2Service.getPresignedUrl(storageKey, 3600);
+      const response = await fetch(url);
       
-      if (!response.Body) {
+      if (!response.ok) {
         throw new AppError('File not found in storage', 404);
       }
 
-      // Convert stream to buffer
-      const chunks: Uint8Array[] = [];
-      for await (const chunk of response.Body as any) {
-        chunks.push(chunk);
-      }
-      return Buffer.concat(chunks);
+      const arrayBuffer = await response.arrayBuffer();
+      return Buffer.from(arrayBuffer);
     } catch (error) {
       console.error('R2 Download Error:', error);
       throw new AppError('Failed to download file from storage', 500);
@@ -163,13 +135,8 @@ export class StorageService {
    * Generate a presigned URL for temporary access (private files)
    */
   async getPresignedUrl(storageKey: string, expiresIn: number = 3600): Promise<string> {
-    const command = new GetObjectCommand({
-      Bucket: R2_CONFIG.bucketName,
-      Key: storageKey,
-    });
-
     try {
-      const url = await getSignedUrl(r2Client, command, { expiresIn });
+      const url = await r2Service.getPresignedUrl(storageKey, expiresIn);
       return url;
     } catch (error) {
       console.error('R2 Presigned URL Error:', error);

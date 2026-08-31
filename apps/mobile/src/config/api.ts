@@ -6,15 +6,23 @@
  * 
  * Behavior:
  * - Development (local): Uses localhost based on platform
- * - Production: Uses EXPO_PUBLIC_API_URL or falls back to localhost
+ * - Production: Uses EXPO_PUBLIC_API_URL
  */
 
 import { Platform } from 'react-native';
 
+// Declare EXPO_PUBLIC_API_URL for TypeScript
+declare global {
+  namespace NodeJS {
+    interface ProcessEnv {
+      EXPO_PUBLIC_API_URL?: string;
+    }
+  }
+}
+
 const getBaseUrl = () => {
-  // Check for explicit environment variable first (production)
-  const envApiUrl = (globalThis as any).__EXPO_PUBLIC_API_URL 
-    || process.env.EXPO_PUBLIC_API_URL;
+  // Check for environment variable (works in Expo Web with EXPO_PUBLIC_ prefix)
+  const envApiUrl = process.env.EXPO_PUBLIC_API_URL;
   
   if (envApiUrl) {
     return `${envApiUrl}/api/v1`;
@@ -30,7 +38,7 @@ const getBaseUrl = () => {
     return 'http://localhost:3000/api/v1';
   }
   
-  // Fallback for production if env var not set
+  // Production fallback (should not reach here if EXPO_PUBLIC_API_URL is set)
   return 'http://localhost:3000/api/v1';
 };
 

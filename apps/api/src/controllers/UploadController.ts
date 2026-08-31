@@ -47,14 +47,40 @@ export class UploadController {
     const file = req.file as MulterFile | undefined;
     const { title, category, expirationDate, extractedData } = req.body;
 
+    // Debug logs (always on while diagnosing the upload)
+    console.log('📎 Upload attempt:', {
+      userId,
+      hasFile: !!file,
+      fileName: file?.originalname,
+      fileSize: file?.size,
+      fileMimetype: file?.mimetype,
+      title,
+      category,
+      expirationDate,
+      contentType: req.headers['content-type'],
+      contentLength: req.headers['content-length'],
+      bodyKeys: Object.keys(req.body),
+      bodyFileType: typeof req.body.file,
+      bodyFilePreview: req.body.file
+        ? typeof req.body.file === 'object'
+          ? JSON.stringify(req.body.file).slice(0, 200)
+          : String(req.body.file).slice(0, 200)
+        : undefined,
+    });
+
     // Validate file exists
     if (!file) {
-      throw new AppError('No file provided. Use field name: file', 400);
+      throw new AppError(
+        `No file parsed by multer. Content-Type: ${req.headers['content-type']}. ` +
+        `body.file type: ${typeof req.body.file}. ` +
+        `Make sure you send multipart/form-data with field name 'file'.`,
+        400
+      );
     }
 
     // Validate required fields (expirationDate is optional)
     if (!title || !category) {
-      throw new AppError('Missing required fields: title, category', 400);
+      throw new AppError(`Missing required fields: title=${title}, category=${category}`, 400);
     }
 
     // Upload to R2

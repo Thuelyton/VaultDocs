@@ -19,15 +19,11 @@ const app: Application = express();
 // CORS Configuration
 // In production, CORS_ORIGIN must be set to the exact frontend domain
 // In development, allow localhost for local testing
-const corsOrigin = process.env.CORS_ORIGIN || (
-  process.env.NODE_ENV === 'production'
-    ? '' // Block all origins in production if not configured
-    : 'http://localhost:8081' // Default dev origin for Expo Web
-);
+const corsOrigin = process.env.CORS_ORIGIN;
 
 app.use(
   cors({
-    origin: corsOrigin ? [corsOrigin] : false,
+    origin: corsOrigin ? [corsOrigin] : true, // Allow all origins in dev
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
@@ -35,8 +31,33 @@ app.use(
 );
 
 // Body Parsing
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+// Skip JSON/urlencoded parsing on /upload routes so multer always receives the raw stream.
+// (Some clients send an incorrect Content-Type for multipart, causing these parsers
+//  to consume the body before multer gets a chance to parse it.)
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api/v1/upload')) return next();
+  return express.json({ limit: '10mb' })(req, res, next);
+});
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api/v1/upload')) return next();
+  return express.urlencoded({ extended: true, limit: '10mb' })(req, res, next);
+});
+
+// Diagnostic middleware: log raw request headers/body BEFORE multer runs.
+// Helps debug React Native/Expo uploads where the Content-Type may not arrive as multipart.
+app.use((req: Request, _res: Response, next) => {
+  if (req.path.includes('/upload')) {
+    console.log('🛰️  Incoming upload request:', {
+      method: req.method,
+      path: req.path,
+      contentType: req.headers['content-type'],
+      contentLength: req.headers['content-length'],
+      transferEncoding: req.headers['transfer-encoding'],
+      hasAuth: !!req.headers.authorization,
+    });
+  }
+  next();
+});
 
 // Security Headers (basic)
 app.use((req: Request, res: Response, next) => {

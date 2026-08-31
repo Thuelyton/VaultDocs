@@ -1,4 +1,5 @@
 import { S3Client } from '@aws-sdk/client-s3';
+import { FetchHttpHandler } from '@smithy/fetch-http-handler';
 
 /**
  * Cloudflare R2 Client Configuration
@@ -26,7 +27,8 @@ if (!R2_ACCOUNT_ID || !R2_ACCESS_KEY_ID || !R2_SECRET_ACCESS_KEY) {
 }
 
 /**
- * S3 Client configured for Cloudflare R2
+ * S3 Client configured for Cloudflare R2 using FetchHttpHandler
+ * This avoids SSL/TLS issues with Node.js v24
  */
 export const r2Client = new S3Client({
   region: 'auto',
@@ -35,6 +37,11 @@ export const r2Client = new S3Client({
     accessKeyId: R2_ACCESS_KEY_ID || '',
     secretAccessKey: R2_SECRET_ACCESS_KEY || '',
   },
+  forcePathStyle: true,
+  requestHandler: new FetchHttpHandler(),
+  // Disable response checksums for compatibility
+  requestChecksumCalculation: 'WHEN_REQUIRED',
+  responseChecksumValidation: 'WHEN_REQUIRED',
 });
 
 /**
